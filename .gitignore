@@ -1,0 +1,35 @@
+# Build directories
+**/build/
+
+# CMake generated
+**/CMakeUserPresets.json
+CMakeCache.txt
+cmake_install.cmake
+CMakeFiles/
+
+# Compiled objects
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+
+# Visual Studio (legacy)
+*.sln
+*.vcxproj
+*.vcxproj.*
+*.pch
+*.ilk
+*.pdb
+x64/
+
+# Precompiled headers
+*.gch
+
+# IDE
+.idea/
+.vs/
+*.swp
+*.swo
+*~

@@ -1,0 +1,60 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build contur (Debug)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "${workspaceFolder}/src/build.sh",
+                "debug",
+                "${workspaceFolder}/src"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Clear build artifacts",
+            "type": "shell",
+            "command": "rm -rf ${workspaceFolder}/src/build/*",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Format Code (All Files)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "${workspaceFolder}/misc/format.sh"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Format Code (Current File)",
+            "type": "shell",
+            "command": "clang-format",
+            "args": [
+                "-i",
+                "${file}"
+            ],
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
