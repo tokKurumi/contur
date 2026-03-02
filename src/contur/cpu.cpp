@@ -65,25 +65,33 @@ Interrupt CPU::decode(Block &block, SysReg &sysreg)
         sysreg.setState(block.getNregister(), block.getOperand());
         break;
     case Add:
-        sysreg.setState(static_cast<Name>(block.getNregister()),
-                        sysreg.getState(static_cast<Name>(block.getNregister())) + block.getOperand());
+        sysreg.setState(
+            static_cast<Name>(block.getNregister()),
+            sysreg.getState(static_cast<Name>(block.getNregister())) + block.getOperand()
+        );
         break;
     case Sub:
-        sysreg.setState(static_cast<Name>(block.getNregister()),
-                        sysreg.getState(static_cast<Name>(block.getNregister())) - block.getOperand());
+        sysreg.setState(
+            static_cast<Name>(block.getNregister()),
+            sysreg.getState(static_cast<Name>(block.getNregister())) - block.getOperand()
+        );
         break;
     case Mul:
-        sysreg.setState(static_cast<Name>(block.getNregister()),
-                        sysreg.getState(static_cast<Name>(block.getNregister())) *
-                            sysreg.getState(static_cast<Name>(block.getOperand())));
+        sysreg.setState(
+            static_cast<Name>(block.getNregister()),
+            sysreg.getState(static_cast<Name>(block.getNregister())) *
+                sysreg.getState(static_cast<Name>(block.getOperand()))
+        );
         break;
     case Div:
         if (sysreg.getState(static_cast<Name>(block.getOperand())) == 0) {
             return Div_0;
         }
-        sysreg.setState(static_cast<Name>(block.getNregister()),
-                        sysreg.getState(static_cast<Name>(block.getNregister())) /
-                            sysreg.getState(static_cast<Name>(block.getOperand())));
+        sysreg.setState(
+            static_cast<Name>(block.getNregister()),
+            sysreg.getState(static_cast<Name>(block.getNregister())) /
+                sysreg.getState(static_cast<Name>(block.getOperand()))
+        );
         break;
     case Int:
         return static_cast<Interrupt>(block.getOperand());
