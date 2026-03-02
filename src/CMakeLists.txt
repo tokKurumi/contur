@@ -22,6 +22,15 @@ add_executable(contur
     contur/scheduler.cpp
     contur/statistic.cpp
     contur/virtual_memory.cpp
+    demos/demo_context.cpp
+    demos/demo_architecture.cpp
+    demos/demo_multitasking.cpp
+    demos/demo_process.cpp
+    demos/demo_synchronization.cpp
+    demos/demo_mmu.cpp
+    demos/demo_virtual_memory.cpp
+    demos/demo_scheduling.cpp
+    demos/demo_multiprocessor.cpp
 )
 
 target_include_directories(contur PUBLIC
