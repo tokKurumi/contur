@@ -7,7 +7,7 @@ MMU::MMU(Memory &memory) : memory(memory)
 
 void MMU::swapIn(ProcessImage &processImage)
 {
-    Memory *code = processImage.getCode();
+    auto code = processImage.getCode();
     int addrPCB = processImage.getAddr();
     int addrReal = getRealAddr();
 
@@ -49,7 +49,7 @@ void MMU::setAlloc(int addr)
 void MMU::Debug(Handle &handle)
 {
     ProcessImage &processImage = static_cast<ProcessImage &>(handle);
-    Memory *code = processImage.getCode();
+    auto code = processImage.getCode();
 
     std::cout << '\n';
     std::cout << "-get address of loading programm in memory & set PC" << '\n';

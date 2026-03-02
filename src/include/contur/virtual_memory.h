@@ -19,7 +19,7 @@ class VirtualMemory
     virtual void setAddrImage(int addr);
     ProcessImage &getImage();
     virtual void setMemory(std::shared_ptr<Memory> memory);
-    virtual Memory *read(int addr);
+    virtual std::shared_ptr<Memory> read(int addr);
     virtual int getAddrFreeImage();
     virtual void clearImage(int addr);
     virtual void clearMemory();

@@ -170,7 +170,7 @@ Interrupt Scheduler::execute(int addr, int id, CPU &cpu)
 bool Scheduler::scheduleJob(MMU &mmu, bool priority)
 {
     DebugSPNQueue();
-    job = new Job[MAX_PROCESS];
+    job = std::shared_ptr<Job[]>(new Job[MAX_PROCESS]);
     ProcessImage *processImage = nullptr;
 
     int size_ = size(Swapped);
@@ -232,7 +232,7 @@ bool Scheduler::scheduleJob(MMU &mmu, bool priority)
 
 Interrupt Scheduler::execute(MMU &mmu)
 {
-    return execute(job, mmu);
+    return execute(job.get(), mmu);
 }
 
 int Scheduler::getID()

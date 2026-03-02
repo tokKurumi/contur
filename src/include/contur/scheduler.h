@@ -71,7 +71,7 @@ class Scheduler
   private:
     CPU &cpu;
     int MAX_PROCESS;
-    Job *job;
+    std::shared_ptr<Job[]> job;
     std::vector<SysReg> sysreg;
     int sliceCPU;
 
@@ -95,11 +95,11 @@ class Scheduler
     bool scheduleJob(MMU &mmu, bool priority);
     Interrupt execute(MMU &mmu);
 
-    void setJob(Job *job)
+    void setJob(std::shared_ptr<Job[]> job)
     {
-        this->job = job;
+        this->job = std::move(job);
     }
-    Job *getJob()
+    std::shared_ptr<Job[]> getJob()
     {
         return this->job;
     }

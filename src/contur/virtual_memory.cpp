@@ -24,7 +24,7 @@ void VirtualMemory::setMemory(std::shared_ptr<Memory> memory)
     image[currImage].setCode(std::move(memory));
 }
 
-Memory *VirtualMemory::read(int addr)
+std::shared_ptr<Memory> VirtualMemory::read(int addr)
 {
     return image[addr].getCode();
 }

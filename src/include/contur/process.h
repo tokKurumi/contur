@@ -130,9 +130,9 @@ class ProcessImage : public PCB
     void Debug();
     void DebugTime();
 
-    Memory *getCode()
+    std::shared_ptr<Memory> getCode()
     {
-        return memory.get();
+        return memory;
     }
     void setCode(std::shared_ptr<Memory> memory)
     {
