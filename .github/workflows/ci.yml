@@ -25,11 +25,11 @@ jobs:
           - compiler: clang
             cc: clang
             cxx: clang++
-            build_type: Debug
+            build_type: Release
           - compiler: gcc
             cc: gcc
             cxx: g++
-            build_type: Debug
+            build_type: Release
 
     steps:
       - uses: actions/checkout@v4
