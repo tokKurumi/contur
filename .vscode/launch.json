@@ -2,13 +2,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug contur",
+            "name": "Debug contur2",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/src/build/Debug/contur",
+            "program": "${workspaceFolder}/src/build/debug/app/contur2",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/src",
+            "environment": [
+                { "name": "ASAN_OPTIONS", "value": "detect_leaks=0" }
+            ],
             "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
@@ -23,7 +26,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "Build contur (Debug)",
+            "preLaunchTask": "Build contur2 (Debug)",
             "miDebuggerPath": "/usr/bin/gdb",
             "logging": {
                 "engineLogging": false

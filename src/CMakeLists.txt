@@ -1,39 +1,59 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
+project(contur2 LANGUAGES CXX)
 
-project(contur LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(contur
-    main.cpp
-    contur/architecture_cpu.cpp
-    contur/cpu.cpp
-    contur/device.cpp
-    contur/dispatcher.cpp
-    contur/handle.cpp
-    contur/kernel.cpp
-    contur/lan.cpp
-    contur/memory.cpp
-    contur/mmu.cpp
-    contur/mp_dispatcher.cpp
-    contur/process.cpp
-    contur/scheduler.cpp
-    contur/statistic.cpp
-    contur/virtual_memory.cpp
-    demos/demo_context.cpp
-    demos/demo_architecture.cpp
-    demos/demo_multitasking.cpp
-    demos/demo_process.cpp
-    demos/demo_synchronization.cpp
-    demos/demo_mmu.cpp
-    demos/demo_virtual_memory.cpp
-    demos/demo_scheduling.cpp
-    demos/demo_multiprocessor.cpp
+# --- Tracing (compile-time toggle) ---
+option(CONTUR2_ENABLE_TRACING "Enable kernel tracing (Debug only)" OFF)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CONTUR2_ENABLE_TRACING ON CACHE BOOL "" FORCE)
+endif()
+
+# --- contur2_lib static library ---
+# Collects all .cpp files under contur/ (mirrors include/contur/ headers)
+file(GLOB_RECURSE CONTUR2_LIB_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/contur/*.cpp
 )
 
-target_include_directories(contur PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
+# If no .cpp files exist yet, create a header-only INTERFACE target temporarily,
+# then switch to STATIC once sources appear.
+if(CONTUR2_LIB_SOURCES)
+    add_library(contur2_lib STATIC ${CONTUR2_LIB_SOURCES})
+else()
+    # No sources yet — use an INTERFACE library so linking still works
+    add_library(contur2_lib INTERFACE)
+endif()
+
+# Public include path: src/include/
+# Usage: #include "contur/core/types.h"
+if(CONTUR2_LIB_SOURCES)
+    target_include_directories(contur2_lib PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    if(CONTUR2_ENABLE_TRACING)
+        target_compile_definitions(contur2_lib PUBLIC CONTUR_TRACE_ENABLED)
+    endif()
+else()
+    target_include_directories(contur2_lib INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    if(CONTUR2_ENABLE_TRACING)
+        target_compile_definitions(contur2_lib INTERFACE CONTUR_TRACE_ENABLED)
+    endif()
+endif()
+
+# --- Subdirectories ---
+add_subdirectory(demos)
+add_subdirectory(app)
+
+# --- Tests (optional) ---
+option(CONTUR2_BUILD_TESTS "Build unit and integration tests" ON)
+if(CONTUR2_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

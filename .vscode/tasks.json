@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build contur (Debug)",
+            "label": "Build contur2 (Debug)",
             "type": "shell",
             "command": "bash",
             "args": [
@@ -10,7 +10,38 @@
                 "debug",
                 "${workspaceFolder}/src"
             ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "Build contur2 (Release)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "${workspaceFolder}/src/build.sh",
+                "release",
+                "${workspaceFolder}/src"
+            ],
             "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "ctest",
+            "args": ["--preset", "debug", "--output-on-failure"],
+            "group": "test",
             "presentation": {
                 "reveal": "always",
                 "panel": "shared"

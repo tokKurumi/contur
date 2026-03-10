@@ -1,25 +1,81 @@
 ---
 Language: Cpp
-Standard: c++17
+Standard: c++20
+BasedOnStyle: LLVM
+
 IndentWidth: 4
-UseTab: Never
 TabWidth: 4
-AllowShortBlocksOnASingleLine: Never
-AllowShortFunctionsOnASingleLine: None
-AllowShortIfStatementsOnASingleLine: Never
-AllowShortLoopsOnASingleLine: false
+UseTab: Never
+ColumnLimit: 120
+
+# Braces: Allman for class/function, K&R for control flow
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: true
+  AfterEnum: true
+  AfterUnion: true
+  AfterExternBlock: false
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  AfterControlStatement: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+NamespaceIndentation: None
+CompactNamespaces: false
+
+# Includes
+SortIncludes: CaseInsensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<[a-z_]+>'          # C++ standard headers
+    Priority: 1
+  - Regex: '^<.*>'               # System/third-party headers
+    Priority: 2
+  - Regex: '^"contur/core/'      # Core headers first
+    Priority: 3
+  - Regex: '^"contur/'           # Project headers
+    Priority: 4
+  - Regex: '^"demos/'            # Demo headers
+    Priority: 5
+  - Regex: '.*'                  # Everything else
+    Priority: 6
+
+# Alignment
+AlignAfterOpenBracket: BlockIndent
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Left
+AlignOperands: Align
+AlignTrailingComments: true
+
+# Arguments and parameters
 AllowAllArgumentsOnNextLine: true
 AllowAllParametersOfDeclarationOnNextLine: true
-AlignAfterOpenBracket: BlockIndent
-AlwaysBreakAfterDefinitionReturnType: None
-AlwaysBreakBeforeMultilineStrings: true
 BinPackArguments: false
 BinPackParameters: false
-BreakBeforeBraces: Linux
-ColumnLimit: 120
-CompactNamespaces: false
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
+
+# Short forms
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Inline
+AllowShortLoopsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+
+# Constructors
 ConstructorInitializerIndentWidth: 4
+BreakConstructorInitializers: BeforeComma
+
+# Other
 ContinuationIndentWidth: 4
 IndentCaseLabels: false
 IndentPPDirectives: None
@@ -27,12 +83,13 @@ IndentWrappedFunctionNames: false
 InsertBraces: true
 KeepEmptyLinesAtTheStartOfBlocks: false
 MaxEmptyLinesToKeep: 1
-NamespaceIndentation: None
-ObjCBlockIndentWidth: 4
+
+# Pointer/Reference
 PointerAlignment: Right
-ReflowComments: true
-SortIncludes: true
-SortUsingDeclarations: true
+ReferenceAlignment: Right
+DerivePointerAlignment: false
+
+# Spaces
 SpaceAfterCStyleCast: false
 SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: true
@@ -43,12 +100,14 @@ SpaceBeforeInheritanceColon: true
 SpaceBeforeParens: ControlStatements
 SpaceBeforeRangeBasedForLoopColon: true
 SpaceInEmptyBlock: false
-SpaceInEmptyParentheses: false
 SpacesBeforeTrailingComments: 1
 SpacesInAngles: false
-SpacesInCStyleCastParentheses: false
-SpacesInConditionalStatement: false
-SpacesInContainerLiterals: false
-SpacesInParentheses: false
-SpacesInSquareBrackets: false
+
+# Modern C++
+EmptyLineBeforeAccessModifier: LogicalBlock
+SeparateDefinitionBlocks: Leave
+RequiresClausePosition: OwnLine
+
+ReflowComments: true
+SortUsingDeclarations: true
 ...

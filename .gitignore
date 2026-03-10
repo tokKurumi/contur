@@ -33,3 +33,6 @@ x64/
 *.swp
 *.swo
 *~
+
+# Google Test build artifacts
+_deps/

@@ -1,4 +1,6 @@
 {
-    "C_Cpp.default.compilerPath": "/usr/bin/g++",
-    "cmake.sourceDirectory": "/mnt/hard-drive/Projects/contur/src"
+    "C_Cpp.default.compilerPath": "/usr/bin/clang++",
+    "C_Cpp.default.cppStandard": "c++20",
+    "cmake.sourceDirectory": "${workspaceFolder}/src",
+    "cmake.configureOnOpen": true
 }
