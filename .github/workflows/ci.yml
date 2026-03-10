@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.compiler }} (${{ matrix.build_type }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+            build_type: Debug
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+            build_type: Debug
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+          # Ensure compilers are available
+          ${{ matrix.cxx }} --version
+
+      - name: Configure
+        run: |
+          cmake -G Ninja -S src -B src/build \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -DCMAKE_C_COMPILER=${{ matrix.cc }} \
+            -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic" \
+            -DCONTUR2_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build src/build 2>&1 | tee build_output.txt
+
+      - name: Show warnings
+        if: always()
+        run: grep -i "warning:" build_output.txt || echo "No warnings found"
+
+      - name: Run tests
+        run: ctest --test-dir src/build --output-on-failure
