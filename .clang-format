@@ -30,6 +30,7 @@ BraceWrapping:
 
 NamespaceIndentation: All
 CompactNamespaces: false
+AccessModifierOffset: 0
 
 # Includes
 SortIncludes: CaseInsensitive
