@@ -100,8 +100,8 @@
             "windows": {
                 "command": "powershell",
                 "args": [
-                    "-Command",
-                    "Get-ChildItem -Path '${workspaceFolder}/src' -Recurse -Include *.cpp,*.h | Where-Object { $_.FullName -notmatch 'build' } | ForEach-Object { clang-format -i $_.FullName; Write-Host \"  Formatted: $($_.Name)\" }"
+                    "-ExecutionPolicy", "Bypass",
+                    "-File", "${workspaceFolder}/misc/format.ps1"
                 ]
             },
             "group": "build",
