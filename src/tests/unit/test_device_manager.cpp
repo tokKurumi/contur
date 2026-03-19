@@ -130,16 +130,16 @@ TEST(DeviceManagerTest, GetDevice)
 {
     DeviceManager mgr;
     ASSERT_TRUE(mgr.registerDevice(std::make_unique<TestDevice>(5)).isOk());
-    auto *dev = mgr.getDevice(5);
-    ASSERT_NE(dev, nullptr);
-    EXPECT_EQ(dev->id(), 5);
-    EXPECT_EQ(dev->name(), "TestDevice");
+    auto dev = mgr.getDevice(5);
+    ASSERT_TRUE(dev.has_value());
+    EXPECT_EQ(dev->get().id(), 5);
+    EXPECT_EQ(dev->get().name(), "TestDevice");
 }
 
 TEST(DeviceManagerTest, GetDeviceReturnsNullForUnknown)
 {
     DeviceManager mgr;
-    EXPECT_EQ(mgr.getDevice(99), nullptr);
+    EXPECT_FALSE(mgr.getDevice(99).has_value());
 }
 
 TEST(DeviceManagerTest, GetDeviceConst)
@@ -147,21 +147,22 @@ TEST(DeviceManagerTest, GetDeviceConst)
     DeviceManager mgr;
     ASSERT_TRUE(mgr.registerDevice(std::make_unique<TestDevice>(5)).isOk());
     const auto &constMgr = mgr;
-    const auto *dev = constMgr.getDevice(5);
-    ASSERT_NE(dev, nullptr);
-    EXPECT_EQ(dev->id(), 5);
+    auto dev = constMgr.getDevice(5);
+    ASSERT_TRUE(dev.has_value());
+    EXPECT_EQ(dev->get().id(), 5);
 }
 
 TEST(DeviceManagerTest, WriteToDevice)
 {
     DeviceManager mgr;
-    auto testDev = std::make_unique<TestDevice>(1);
-    auto *rawPtr = testDev.get();
-    ASSERT_TRUE(mgr.registerDevice(std::move(testDev)).isOk());
+    ASSERT_TRUE(mgr.registerDevice(std::make_unique<TestDevice>(1)).isOk());
 
     ASSERT_TRUE(mgr.write(1, 42).isOk());
-    EXPECT_EQ(rawPtr->lastWritten(), 42);
-    EXPECT_EQ(rawPtr->writeCount(), 1);
+    auto dev = mgr.getDevice(1);
+    ASSERT_TRUE(dev.has_value());
+    auto &typed = static_cast<TestDevice &>(dev->get());
+    EXPECT_EQ(typed.lastWritten(), 42);
+    EXPECT_EQ(typed.writeCount(), 1);
 }
 
 TEST(DeviceManagerTest, WriteToUnknownDeviceFails)

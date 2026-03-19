@@ -75,13 +75,13 @@ TEST(SimulationClockTest, MoveAssignment)
 TEST(SimulationClockTest, InterfacePolymorphism)
 {
     auto clock = std::make_unique<SimulationClock>();
-    IClock *iface = clock.get();
+    IClock &iface = *clock;
 
-    EXPECT_EQ(iface->now(), 0u);
-    iface->tick();
-    EXPECT_EQ(iface->now(), 1u);
-    iface->reset();
-    EXPECT_EQ(iface->now(), 0u);
+    EXPECT_EQ(iface.now(), 0u);
+    iface.tick();
+    EXPECT_EQ(iface.now(), 1u);
+    iface.reset();
+    EXPECT_EQ(iface.now(), 0u);
 }
 
 TEST(SimulationClockTest, ManyTicks)

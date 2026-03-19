@@ -7,7 +7,9 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "contur/core/error.h"
@@ -42,11 +44,11 @@ namespace contur {
         /// @return Success, or NotFound if no device with the given ID exists.
         [[nodiscard]] Result<void> unregisterDevice(DeviceId id);
 
-        /// @brief Returns a pointer to the device with the given ID, or nullptr.
-        [[nodiscard]] IDevice *getDevice(DeviceId id) noexcept;
+        /// @brief Returns a non-owning reference to the device with the given ID, if present.
+        [[nodiscard]] std::optional<std::reference_wrapper<IDevice>> getDevice(DeviceId id) noexcept;
 
-        /// @brief Returns a const pointer to the device with the given ID, or nullptr.
-        [[nodiscard]] const IDevice *getDevice(DeviceId id) const noexcept;
+        /// @brief Returns a const non-owning reference to the device with the given ID, if present.
+        [[nodiscard]] std::optional<std::reference_wrapper<const IDevice>> getDevice(DeviceId id) const noexcept;
 
         /// @brief Writes a value to the device with the given ID.
         /// @return Success, or NotFound/DeviceError on failure.
