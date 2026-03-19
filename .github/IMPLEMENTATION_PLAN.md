@@ -208,14 +208,14 @@
 
 | # | Task | Header | Source | Test | Done |
 |---|---|---|---|---|---|
-| 7.1 | `i_sync_primitive.h` — `ISyncPrimitive` interface (acquire, release, tryAcquire, name) | `sync/i_sync_primitive.h` | — | — | |
-| 7.2 | `mutex.h` — `Mutex` (PIMPL; binary lock with owner tracking) | `sync/mutex.h` | `sync/mutex.cpp` | `test_mutex.cpp` | |
-| 7.3 | `semaphore.h` — `Semaphore` (PIMPL; counting semaphore) | `sync/semaphore.h` | `sync/semaphore.cpp` | `test_semaphore.cpp` | |
-| 7.4 | `critical_section.h` — `CriticalSection` (ISyncPrimitive composition) | `sync/critical_section.h` | `sync/critical_section.cpp` | — | |
-| 7.5 | `deadlock_detector.h` — `DeadlockDetector` (wait-for graph + cycle detection DFS + banker's algorithm) | `sync/deadlock_detector.h` | `sync/deadlock_detector.cpp` | `test_deadlock_detector.cpp` | |
-| 7.6 | `i_dispatcher.h` — `IDispatcher` interface (createProcess, dispatch, tick) | `dispatch/i_dispatcher.h` | — | — | |
-| 7.7 | `dispatcher.h` — `Dispatcher` (PIMPL; lifecycle orchestration: allocate VM → enqueue → schedule → execute → terminate) | `dispatch/dispatcher.h` | `dispatch/dispatcher.cpp` | `test_dispatcher.cpp` | |
-| 7.8 | `mp_dispatcher.h` — `MPDispatcher` (extends Dispatcher for N processors) | `dispatch/mp_dispatcher.h` | `dispatch/mp_dispatcher.cpp` | `test_mp_dispatcher.cpp` | |
+| 7.1 | `i_sync_primitive.h` — `ISyncPrimitive` interface (acquire, release, tryAcquire, name) | `sync/i_sync_primitive.h` | — | — | ✅ |
+| 7.2 | `mutex.h` — `Mutex` (PIMPL; binary lock with owner tracking) | `sync/mutex.h` | `sync/mutex.cpp` | `test_mutex.cpp` | ✅ |
+| 7.3 | `semaphore.h` — `Semaphore` (PIMPL; counting semaphore) | `sync/semaphore.h` | `sync/semaphore.cpp` | `test_semaphore.cpp` | ✅ |
+| 7.4 | `critical_section.h` — `CriticalSection` (ISyncPrimitive composition) | `sync/critical_section.h` | `sync/critical_section.cpp` | — | ✅ |
+| 7.5 | `deadlock_detector.h` — `DeadlockDetector` (wait-for graph + cycle detection DFS + banker's algorithm) | `sync/deadlock_detector.h` | `sync/deadlock_detector.cpp` | `test_deadlock_detector.cpp` | ✅ |
+| 7.6 | `i_dispatcher.h` — `IDispatcher` interface (createProcess, dispatch, tick) | `dispatch/i_dispatcher.h` | — | — | ✅ |
+| 7.7 | `dispatcher.h` — `Dispatcher` (PIMPL; lifecycle orchestration: allocate VM → enqueue → schedule → execute → terminate) | `dispatch/dispatcher.h` | `dispatch/dispatcher.cpp` | `test_dispatcher.cpp` | ✅ |
+| 7.8 | `mp_dispatcher.h` — `MPDispatcher` (extends Dispatcher for N processors) | `dispatch/mp_dispatcher.h` | `dispatch/mp_dispatcher.cpp` | `test_mp_dispatcher.cpp` | ✅ |
 
 ### Acceptance Criteria
 - Mutex: acquire/release works; double-acquire by same process is reentrant or returns error
@@ -461,7 +461,7 @@
 
 ---
 
-## Test Statistics (Phases 0–6)
+## Test Statistics (Phases 0–7)
 
 | Phase | Test File | Test Suites | Tests |
 |---|---|---|---|
@@ -491,7 +491,12 @@
 | 6 | `test_mlfq.cpp` | MlfqPolicyTest | 2 |
 | 6 | `test_statistics.cpp` | StatisticsTest | 3 |
 | 6 | `test_scheduler.cpp` | SchedulerTest | 3 |
-| | | **35 suites** | **358** |
+| 7 | `test_mutex.cpp` | MutexTest | 9 |
+| 7 | `test_semaphore.cpp` | SemaphoreTest | 7 |
+| 7 | `test_deadlock_detector.cpp` | DeadlockDetectorTest | 15 |
+| 7 | `test_dispatcher.cpp` | DispatcherTest | 12 |
+| 7 | `test_mp_dispatcher.cpp` | MPDispatcherTest | 8 |
+| | | **40 suites** | **409** |
 
 ---
 
@@ -505,7 +510,7 @@ Phase 3:  Process                  ████████             ✅  (5 
 Phase 4:  CPU + I/O                ████████████         ✅  (7 tasks,  94 tests)
 Phase 5:  Interpreter              ████████             ✅  (3 tasks,  26 tests)
 Phase 6:  Scheduling               ████████████████     ✅  (11 tasks, 21 tests)
-Phase 7:  Dispatch + Sync          ████████████████
+Phase 7:  Dispatch + Sync          ████████████████     ✅  (8 tasks,  51 tests)
 Phase 8:  IPC + Syscalls           ████████████
 Phase 9:  File System              ████████████
 Phase 10: Kernel                   ████████
@@ -516,9 +521,5 @@ Phase 14: Native Engine            ████████
 Phase 15: Tests                    ████████████
 Phase 16: Docs + CI                ████████
 
-Total: 358 unit tests passing (Phases 0–6)
+Total: 409 unit tests passing (Phases 0–7)
 ```
-
-> Phases 2 and 3 can be developed in parallel (no dependency on each other).
-> Phases 8, 9 can be developed in parallel after Phase 7 reaches task 7.6.
-> Phase 11 and 12 can be developed in parallel after Phase 10.
