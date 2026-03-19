@@ -1,0 +1,19 @@
+/// @file spn_policy.h
+/// @brief Shortest Process Next scheduling policy.
+
+#pragma once
+
+#include "contur/scheduling/i_scheduling_policy.h"
+
+namespace contur {
+
+    class SpnPolicy final : public ISchedulingPolicy
+    {
+        public:
+        [[nodiscard]] std::string_view name() const noexcept override;
+        [[nodiscard]] ProcessId
+        selectNext(const std::vector<const PCB *> &readyQueue, const IClock &clock) const override;
+        [[nodiscard]] bool shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const override;
+    };
+
+} // namespace contur

@@ -177,17 +177,17 @@
 
 | # | Task | Header | Source | Test | Done |
 |---|---|---|---|---|---|
-| 6.1 | `i_scheduling_policy.h` — `ISchedulingPolicy` interface (name, selectNext, shouldPreempt) | `scheduling/i_scheduling_policy.h` | — | — | |
-| 6.2 | `fcfs_policy.h` — First Come First Served | `scheduling/fcfs_policy.h` | `scheduling/fcfs_policy.cpp` | `test_fcfs.cpp` | |
-| 6.3 | `round_robin_policy.h` — Round Robin (configurable time slice) | `scheduling/round_robin_policy.h` | `scheduling/round_robin_policy.cpp` | `test_round_robin.cpp` | |
-| 6.4 | `spn_policy.h` — Shortest Process Next | `scheduling/spn_policy.h` | `scheduling/spn_policy.cpp` | `test_spn.cpp` | |
-| 6.5 | `srt_policy.h` — Shortest Remaining Time | `scheduling/srt_policy.h` | `scheduling/srt_policy.cpp` | `test_srt.cpp` | |
-| 6.6 | `hrrn_policy.h` — Highest Response Ratio Next | `scheduling/hrrn_policy.h` | `scheduling/hrrn_policy.cpp` | `test_hrrn.cpp` | |
-| 6.7 | `priority_policy.h` — Dynamic Priority scheduling | `scheduling/priority_policy.h` | `scheduling/priority_policy.cpp` | `test_priority_policy.cpp` | |
-| 6.8 | `mlfq_policy.h` — Multilevel Feedback Queue | `scheduling/mlfq_policy.h` | `scheduling/mlfq_policy.cpp` | `test_mlfq.cpp` | |
-| 6.9 | `statistics.h` — `Statistics` (per-process execution history, exponential weighted average prediction) | `scheduling/statistics.h` | `scheduling/statistics.cpp` | `test_statistics.cpp` | |
-| 6.10 | `i_scheduler.h` — `IScheduler` interface (enqueue, dequeue, selectNext, getQueueSnapshot) | `scheduling/i_scheduler.h` | — | — | |
-| 6.11 | `scheduler.h` — `Scheduler` (PIMPL; hosts ISchedulingPolicy, manages state queues, uses Statistics) | `scheduling/scheduler.h` | `scheduling/scheduler.cpp` | `test_scheduler.cpp` | |
+| 6.1 | `i_scheduling_policy.h` — `ISchedulingPolicy` interface (name, selectNext, shouldPreempt) | `scheduling/i_scheduling_policy.h` | — | — | ✅ |
+| 6.2 | `fcfs_policy.h` — First Come First Served | `scheduling/fcfs_policy.h` | `scheduling/fcfs_policy.cpp` | `test_fcfs.cpp` | ✅ |
+| 6.3 | `round_robin_policy.h` — Round Robin (configurable time slice) | `scheduling/round_robin_policy.h` | `scheduling/round_robin_policy.cpp` | `test_round_robin.cpp` | ✅ |
+| 6.4 | `spn_policy.h` — Shortest Process Next | `scheduling/spn_policy.h` | `scheduling/spn_policy.cpp` | `test_spn.cpp` | ✅ |
+| 6.5 | `srt_policy.h` — Shortest Remaining Time | `scheduling/srt_policy.h` | `scheduling/srt_policy.cpp` | `test_srt.cpp` | ✅ |
+| 6.6 | `hrrn_policy.h` — Highest Response Ratio Next | `scheduling/hrrn_policy.h` | `scheduling/hrrn_policy.cpp` | `test_hrrn.cpp` | ✅ |
+| 6.7 | `priority_policy.h` — Dynamic Priority scheduling | `scheduling/priority_policy.h` | `scheduling/priority_policy.cpp` | `test_priority_policy.cpp` | ✅ |
+| 6.8 | `mlfq_policy.h` — Multilevel Feedback Queue | `scheduling/mlfq_policy.h` | `scheduling/mlfq_policy.cpp` | `test_mlfq.cpp` | ✅ |
+| 6.9 | `statistics.h` — `Statistics` (per-process execution history, exponential weighted average prediction) | `scheduling/statistics.h` | `scheduling/statistics.cpp` | `test_statistics.cpp` | ✅ |
+| 6.10 | `i_scheduler.h` — `IScheduler` interface (enqueue, dequeue, selectNext, getQueueSnapshot) | `scheduling/i_scheduler.h` | — | — | ✅ |
+| 6.11 | `scheduler.h` — `Scheduler` (PIMPL; hosts ISchedulingPolicy, manages state queues, uses Statistics) | `scheduling/scheduler.h` | `scheduling/scheduler.cpp` | `test_scheduler.cpp` | ✅ |
 
 ### Acceptance Criteria
 - Each policy, given a synthetic ready queue, selects the correct process
@@ -461,7 +461,7 @@
 
 ---
 
-## Test Statistics (Phases 0–5)
+## Test Statistics (Phases 0–6)
 
 | Phase | Test File | Test Suites | Tests |
 |---|---|---|---|
@@ -482,7 +482,16 @@
 | 4 | `test_cpu.cpp` | CpuTest | 34 |
 | 4 | `test_device_manager.cpp` | DeviceManagerTest, NetworkDeviceTest, ConsoleDeviceTest | 28 |
 | 5 | `test_interpreter_engine.cpp` | InterpreterEngineTest | 26 |
-| | | **26 suites** | **337** |
+| 6 | `test_fcfs.cpp` | FcfsPolicyTest | 2 |
+| 6 | `test_round_robin.cpp` | RoundRobinPolicyTest | 3 |
+| 6 | `test_spn.cpp` | SpnPolicyTest | 2 |
+| 6 | `test_srt.cpp` | SrtPolicyTest | 2 |
+| 6 | `test_hrrn.cpp` | HrrnPolicyTest | 2 |
+| 6 | `test_priority_policy.cpp` | PriorityPolicyTest | 2 |
+| 6 | `test_mlfq.cpp` | MlfqPolicyTest | 2 |
+| 6 | `test_statistics.cpp` | StatisticsTest | 3 |
+| 6 | `test_scheduler.cpp` | SchedulerTest | 3 |
+| | | **35 suites** | **358** |
 
 ---
 
@@ -495,7 +504,7 @@ Phase 2:  Memory                   ████████████         
 Phase 3:  Process                  ████████             ✅  (5 tasks,  99 tests)
 Phase 4:  CPU + I/O                ████████████         ✅  (7 tasks,  94 tests)
 Phase 5:  Interpreter              ████████             ✅  (3 tasks,  26 tests)
-Phase 6:  Scheduling               ████████████████
+Phase 6:  Scheduling               ████████████████ ✅  (11 tasks, 21 tests)
 Phase 7:  Dispatch + Sync          ████████████████
 Phase 8:  IPC + Syscalls           ████████████
 Phase 9:  File System              ████████████
@@ -507,7 +516,7 @@ Phase 14: Native Engine            ████████
 Phase 15: Tests                    ████████████
 Phase 16: Docs + CI                ████████
 
-Total: 337 unit tests passing (Phases 0–5)
+Total: 358 unit tests passing (Phases 0–6)
 ```
 
 > Phases 2 and 3 can be developed in parallel (no dependency on each other).
