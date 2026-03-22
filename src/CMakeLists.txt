@@ -57,3 +57,20 @@ if(CONTUR2_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+
+# --- Doxygen Documentation ---
+find_package(Doxygen QUIET)
+if(DOXYGEN_FOUND)
+    set(DOXYGEN_EXTRACT_ALL YES)
+    set(DOXYGEN_GENERATE_HTML YES)
+    set(DOXYGEN_GENERATE_TREEVIEW YES)
+    set(DOXYGEN_HTML_OUTPUT "html")
+    doxygen_add_docs(docs
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/app
+        COMMENT "Generating API documentation with Doxygen"
+    )
+    message(STATUS "Doxygen documentation target 'docs' available")
+else()
+    message(WARNING "Doxygen not found - documentation target will not be available")
+endif()

@@ -55,7 +55,7 @@
             "problemMatcher": ["$gcc"]
         },
         {
-            "label": "Run Tests",
+            "label": "Run Tests (Debug)",
             "type": "shell",
             "command": "ctest",
             "args": ["--preset", "debug", "--output-on-failure"],
@@ -121,6 +121,35 @@
             ],
             "presentation": {
                 "reveal": "silent",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Generate Doxygen Docs",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/src"
+            },
+            "command": "bash",
+            "args": [
+                "-c",
+                "./build.sh debug . && cmake --build --preset debug --target docs"
+            ],
+            "windows": {
+                "command": "powershell",
+                "args": [
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-Command",
+                    "& { Set-Location -Path '${workspaceFolder}/src'; .\\build.ps1 -Preset debug -SourceDir '${workspaceFolder}/src'; cmake --build --preset debug --target docs }"
+                ],
+                "options": {
+                    "cwd": "${workspaceFolder}/src"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
                 "panel": "shared"
             },
             "problemMatcher": []
