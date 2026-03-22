@@ -265,12 +265,12 @@
 
 | # | Task | Header | Source | Test | Done |
 |---|---|---|---|---|---|
-| 9.1 | `inode.h` — `Inode` struct (type, size, block pointers, timestamps) | `fs/inode.h` | — | — | |
-| 9.2 | `directory_entry.h` — `DirectoryEntry` struct (name → inode number) | `fs/directory_entry.h` | — | — | |
-| 9.3 | `block_allocator.h` — `BlockAllocator` (bitmap-based, allocate/free/isFree) | `fs/block_allocator.h` | `fs/block_allocator.cpp` | `test_block_allocator.cpp` | |
-| 9.4 | `file_descriptor.h` — `FileDescriptor` + per-process FD table | `fs/file_descriptor.h` | `fs/file_descriptor.cpp` | — | |
-| 9.5 | `i_filesystem.h` — `IFileSystem` interface (open, read, write, close, mkdir, remove, listDir, stat) | `fs/i_filesystem.h` | — | — | |
-| 9.6 | `simple_fs.h` — `SimpleFS` (PIMPL; inode table + block allocator + directory tree over simulated disk) | `fs/simple_fs.h` | `fs/simple_fs.cpp` | `test_simple_fs.cpp` | |
+| 9.1 | `inode.h` — `Inode` struct (type, size, block pointers, timestamps) | `fs/inode.h` | — | — | ✅ |
+| 9.2 | `directory_entry.h` — `DirectoryEntry` struct (name → inode number) | `fs/directory_entry.h` | — | — | ✅ |
+| 9.3 | `block_allocator.h` — `BlockAllocator` (bitmap-based, allocate/free/isFree) | `fs/block_allocator.h` | `fs/block_allocator.cpp` | `test_block_allocator.cpp` | ✅ |
+| 9.4 | `file_descriptor.h` — `FileDescriptor` + per-process FD table | `fs/file_descriptor.h` | `fs/file_descriptor.cpp` | — | ✅ |
+| 9.5 | `i_filesystem.h` — `IFileSystem` interface (open, read, write, close, mkdir, remove, listDir, stat) | `fs/i_filesystem.h` | — | — | ✅ |
+| 9.6 | `simple_fs.h` — `SimpleFS` (PIMPL; inode table + block allocator + directory tree over simulated disk) | `fs/simple_fs.h` | `fs/simple_fs.cpp` | `test_simple_fs.cpp` | ✅ |
 
 ### Acceptance Criteria
 - BlockAllocator: allocate/free blocks; bitmap integrity
@@ -461,7 +461,7 @@
 
 ---
 
-## Test Statistics (Phases 0–8)
+## Test Statistics (Phases 0–9)
 
 | Phase | Test File | Test Suites | Tests |
 |---|---|---|---|
@@ -501,7 +501,9 @@
 | 8 | `test_message_queue.cpp` | MessageQueueTest | 7 |
 | 8 | `test_ipc_manager.cpp` | IpcManagerTest | 7 |
 | 8 | `test_syscall_table.cpp` | SyscallTableTest | 6 |
-| | | **45 suites** | **442** |
+| 9 | `test_block_allocator.cpp` | BlockAllocatorTest | 6 |
+| 9 | `test_simple_fs.cpp` | SimpleFSTest | 8 |
+| | | **47 suites** | **456** |
 
 ---
 
@@ -517,7 +519,7 @@ Phase 5:  Interpreter              ████████             ✅  (3 
 Phase 6:  Scheduling               ████████████████     ✅  (11 tasks, 21 tests)
 Phase 7:  Dispatch + Sync          ████████████████     ✅  (8 tasks,  51 tests)
 Phase 8:  IPC + Syscalls           ████████████         ✅  (8 tasks,  33 tests)
-Phase 9:  File System              ████████████
+Phase 9:  File System              ████████████         ✅  (6 tasks,  14 tests)
 Phase 10: Kernel                   ████████
 Phase 11: Tracing                  ████████
 Phase 12: TUI                      ████████████
@@ -526,5 +528,5 @@ Phase 14: Native Engine            ████████
 Phase 15: Tests                    ████████████
 Phase 16: Docs + CI                ████████
 
-Total: 442 unit tests passing (Phases 0–8)
+Total: 456 unit tests passing (Phases 0–9)
 ```
