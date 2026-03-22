@@ -237,14 +237,14 @@
 
 | # | Task | Header | Source | Test | Done |
 |---|---|---|---|---|---|
-| 8.1 | `i_ipc_channel.h` — `IIpcChannel` interface (write, read, close, isOpen, name) | `ipc/i_ipc_channel.h` | — | — | |
-| 8.2 | `pipe.h` — `Pipe` (PIMPL; bounded circular buffer, blocking semantics) | `ipc/pipe.h` | `ipc/pipe.cpp` | `test_pipe.cpp` | |
-| 8.3 | `shared_memory.h` — `SharedMemory` (named region, multi-process attach/detach) | `ipc/shared_memory.h` | `ipc/shared_memory.cpp` | `test_shared_memory.cpp` | |
-| 8.4 | `message_queue.h` — `MessageQueue` (typed FIFO, optional priority) | `ipc/message_queue.h` | `ipc/message_queue.cpp` | `test_message_queue.cpp` | |
-| 8.5 | `ipc_manager.h` — `IpcManager` (registry: create/lookup/destroy channels by name) | `ipc/ipc_manager.h` | `ipc/ipc_manager.cpp` | `test_ipc_manager.cpp` | |
-| 8.6 | `syscall_ids.h` — `SyscallId` enum class (Exit, Read, Write, Fork, Exec, Wait, Open, Close, Pipe, Msg, Shm, Mutex, Sem, GetPid, GetTime, Yield) | `syscall/syscall_ids.h` | — | — | |
-| 8.7 | `syscall_handler.h` — `ISyscallHandler` interface | `syscall/syscall_handler.h` | — | — | |
-| 8.8 | `syscall_table.h` — `SyscallTable` (maps SyscallId → handler; dispatch method) | `syscall/syscall_table.h` | `syscall/syscall_table.cpp` | `test_syscall_table.cpp` | |
+| 8.1 | `i_ipc_channel.h` — `IIpcChannel` interface (write, read, close, isOpen, name) | `ipc/i_ipc_channel.h` | — | — | ✅ |
+| 8.2 | `pipe.h` — `Pipe` (PIMPL; bounded circular buffer, blocking semantics) | `ipc/pipe.h` | `ipc/pipe.cpp` | `test_pipe.cpp` | ✅ |
+| 8.3 | `shared_memory.h` — `SharedMemory` (named region, multi-process attach/detach) | `ipc/shared_memory.h` | `ipc/shared_memory.cpp` | `test_shared_memory.cpp` | ✅ |
+| 8.4 | `message_queue.h` — `MessageQueue` (typed FIFO, optional priority) | `ipc/message_queue.h` | `ipc/message_queue.cpp` | `test_message_queue.cpp` | ✅ |
+| 8.5 | `ipc_manager.h` — `IpcManager` (registry: create/lookup/destroy channels by name) | `ipc/ipc_manager.h` | `ipc/ipc_manager.cpp` | `test_ipc_manager.cpp` | ✅ |
+| 8.6 | `syscall_ids.h` — `SyscallId` enum class (Exit, Read, Write, Fork, Exec, Wait, Open, Close, Pipe, Msg, Shm, Mutex, Sem, GetPid, GetTime, Yield) | `syscall/syscall_ids.h` | — | — | ✅ |
+| 8.7 | `syscall_handler.h` — `ISyscallHandler` interface | `syscall/syscall_handler.h` | — | — | ✅ |
+| 8.8 | `syscall_table.h` — `SyscallTable` (maps SyscallId → handler; dispatch method) | `syscall/syscall_table.h` | `syscall/syscall_table.cpp` | `test_syscall_table.cpp` | ✅ |
 
 ### Acceptance Criteria
 - Pipe: write N bytes, read N bytes back in order; blocking when buffer full
@@ -461,7 +461,7 @@
 
 ---
 
-## Test Statistics (Phases 0–7)
+## Test Statistics (Phases 0–8)
 
 | Phase | Test File | Test Suites | Tests |
 |---|---|---|---|
@@ -496,7 +496,12 @@
 | 7 | `test_deadlock_detector.cpp` | DeadlockDetectorTest | 15 |
 | 7 | `test_dispatcher.cpp` | DispatcherTest | 12 |
 | 7 | `test_mp_dispatcher.cpp` | MPDispatcherTest | 8 |
-| | | **40 suites** | **409** |
+| 8 | `test_pipe.cpp` | PipeTest | 6 |
+| 8 | `test_shared_memory.cpp` | SharedMemoryTest | 7 |
+| 8 | `test_message_queue.cpp` | MessageQueueTest | 7 |
+| 8 | `test_ipc_manager.cpp` | IpcManagerTest | 7 |
+| 8 | `test_syscall_table.cpp` | SyscallTableTest | 6 |
+| | | **45 suites** | **442** |
 
 ---
 
@@ -511,7 +516,7 @@ Phase 4:  CPU + I/O                ████████████         
 Phase 5:  Interpreter              ████████             ✅  (3 tasks,  26 tests)
 Phase 6:  Scheduling               ████████████████     ✅  (11 tasks, 21 tests)
 Phase 7:  Dispatch + Sync          ████████████████     ✅  (8 tasks,  51 tests)
-Phase 8:  IPC + Syscalls           ████████████
+Phase 8:  IPC + Syscalls           ████████████         ✅  (8 tasks,  33 tests)
 Phase 9:  File System              ████████████
 Phase 10: Kernel                   ████████
 Phase 11: Tracing                  ████████
@@ -521,5 +526,5 @@ Phase 14: Native Engine            ████████
 Phase 15: Tests                    ████████████
 Phase 16: Docs + CI                ████████
 
-Total: 409 unit tests passing (Phases 0–7)
+Total: 442 unit tests passing (Phases 0–8)
 ```
