@@ -11,8 +11,6 @@
 
 namespace contur {
 
-    using ResourceId = std::uint32_t;
-
     /// @brief Per-process resource vector used by Banker's safety check.
     struct ResourceAllocation
     {

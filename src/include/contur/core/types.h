@@ -23,8 +23,21 @@ namespace contur {
     /// @brief Unique identifier for an I/O device.
     using DeviceId = std::uint16_t;
 
+    /// @brief Unique identifier for an event subscription.
+    using SubscriptionId = std::uint64_t;
+
     /// @brief Unique identifier for a synchronization resource (mutex, semaphore, etc.).
     using ResourceId = std::uint32_t;
+
+    /// @brief Unique identifier for a filesystem inode.
+    using InodeId = std::uint32_t;
+
+    /// @brief Type of filesystem node.
+    enum class InodeType : std::uint8_t
+    {
+        File,
+        Directory,
+    };
 
     /// @brief Frame number in physical memory.
     using FrameId = std::uint32_t;
@@ -37,6 +50,9 @@ namespace contur {
 
     /// @brief Sentinel value indicating an invalid frame.
     constexpr FrameId INVALID_FRAME = 0xFFFFFFFF;
+
+    /// @brief Sentinel value indicating an invalid inode identifier.
+    constexpr InodeId INVALID_INODE_ID = 0;
 
     /// @brief Maximum number of CPU registers.
     constexpr std::uint8_t REGISTER_COUNT = 16;

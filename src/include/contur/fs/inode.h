@@ -3,26 +3,12 @@
 
 #pragma once
 
-#include <cstdint>
 #include <optional>
 #include <vector>
 
 #include "contur/core/types.h"
 
 namespace contur {
-
-    /// @brief Unique inode identifier type.
-    using InodeId = std::uint32_t;
-
-    /// @brief Sentinel value for an invalid inode identifier.
-    constexpr InodeId INVALID_INODE_ID = 0;
-
-    /// @brief Type of filesystem node.
-    enum class InodeType : std::uint8_t
-    {
-        File,
-        Directory,
-    };
 
     /// @brief Persistent metadata describing a filesystem node.
     struct Inode

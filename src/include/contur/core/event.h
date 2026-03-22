@@ -8,14 +8,12 @@
 #pragma once
 
 #include <algorithm>
-#include <cstdint>
 #include <functional>
 #include <vector>
 
-namespace contur {
+#include "contur/core/types.h"
 
-    /// @brief A unique identifier for an event subscription, used to unsubscribe.
-    using SubscriptionId = std::uint64_t;
+namespace contur {
 
     /// @brief Type-safe event dispatcher supporting multiple subscribers.
     ///
