@@ -9,16 +9,16 @@ Contur 2 is a ground-up rewrite of the Contur educational OS simulator. It model
 
 ## Key Features
 
-- 📚 **Educational**: Fully featured OS kernel simulator with hierarchical tracing
-- 🏗️ **Modular**: Clean architecture with dependency injection and interfaces
-- 🔄 **Dual-Mode Execution**: Bytecode interpreter + native process management
-- 🎯 **7 Scheduling Algorithms**: FCFS, Round Robin, SPN, SRT, HRRN, Priority, MLFQ
-- 💾 **Memory Management**: Virtual memory, paging, 4 page replacement algorithms
-- 🔒 **Synchronization**: Mutexes, semaphores, deadlock detection
-- 📡 **IPC**: Pipes, shared memory, message queues
-- 📁 **File System**: Inode-based filesystem simulation
-- 🎨 **Terminal UI**: Real-time ANSI-based dashboard visualization
-- 🐛 **Tracing**: Hierarchical call tracing with compile-time control
+- **Educational**: Fully featured OS kernel simulator with hierarchical tracing
+- **Modular**: Clean architecture with dependency injection and interfaces
+- **Dual-Mode Execution**: Bytecode interpreter + native process management
+- **7 Scheduling Algorithms**: FCFS, Round Robin, SPN, SRT, HRRN, Priority, MLFQ
+- **Memory Management**: Virtual memory, paging, 4 page replacement algorithms
+- **Synchronization**: Mutexes, semaphores, deadlock detection
+- **IPC**: Pipes, shared memory, message queues
+- **File System**: Inode-based filesystem simulation
+- **Terminal UI**: Real-time ANSI-based dashboard visualization
+- **Tracing**: Hierarchical call tracing with compile-time control
 
 ## Architecture
 
