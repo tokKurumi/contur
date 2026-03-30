@@ -2,47 +2,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug contur2 (Linux/macOS)",
-            "type": "cppdbg",
+            "name": "Debug contur2",
+            "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/src/build/debug/app/contur2",
             "args": [],
-            "stopAtEntry": false,
+            "stopOnEntry": false,
             "cwd": "${workspaceFolder}/src",
-            "environment": [
-                { "name": "ASAN_OPTIONS", "value": "detect_leaks=0" }
-            ],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description": "Set Disassembly Flavor to Intel",
-                    "text": "-gdb-set disassembly-flavor intel",
-                    "ignoreFailures": true
-                }
-            ],
+            "env": {
+                "ASAN_OPTIONS": "detect_leaks=0"
+            },
             "preLaunchTask": "Build contur2 (Debug)",
-            "miDebuggerPath": "/usr/bin/gdb",
-            "logging": {
-                "engineLogging": false
+            "console": "integratedTerminal",
+            "windows": {
+                "program": "${workspaceFolder}/src/build/debug/app/contur2.exe"
             }
-        },
-        {
-            "name": "Debug contur2 (Windows)",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/src/build/debug/app/contur2.exe",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/src",
-            "environment": [],
-            "externalConsole": false,
-            "preLaunchTask": "Build contur2 (Debug)"
         }
     ]
 }
