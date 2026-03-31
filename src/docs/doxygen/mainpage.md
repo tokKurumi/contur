@@ -1,11 +1,11 @@
-# Contur 2 — OS Kernel Simulator & Interpreter
+# Contur 2 — OS Kernel Simulator
 
 ## Overview
 
 Contur 2 is a ground-up rewrite of the Contur educational OS simulator. It models a **real OS kernel** capable of two execution modes:
 
 - **Interpreted mode** — an internal bytecode interpreter emulates x86-like programs step-by-step (educational, fully portable)
-- **Native mode** — the kernel manages real child processes on the host OS via platform abstractions
+- **Native mode** — the kernel manages real child processes on the host OS via platform abstractions (advanced, not ready yet)
 
 ## Key Features
 
@@ -17,8 +17,8 @@ Contur 2 is a ground-up rewrite of the Contur educational OS simulator. It model
 - **Synchronization**: Mutexes, semaphores, deadlock detection
 - **IPC**: Pipes, shared memory, message queues
 - **File System**: Inode-based filesystem simulation
-- **Terminal UI**: Real-time ANSI-based dashboard visualization
-- **Tracing**: Hierarchical call tracing with compile-time control
+- **Terminal UI**: Real-time ANSI-based dashboard visualization (not ready yet)
+- **Tracing**: Hierarchical call tracing with compile-time control (not ready yet)
 
 ## Architecture
 
@@ -48,36 +48,8 @@ The kernel consists of several interconnected subsystems:
 - **io/** — I/O device abstraction
 
 ### Developer Tools
-- **tracing/** — Hierarchical call tracing (Debug-only)
-- **tui/** — Terminal UI with real-time visualization
-
-## Getting Started
-
-### Building
-
-```bash
-# Debug build with tracing
-cmake --preset debug -S src
-cmake --build --preset debug
-
-# Release build (optimized)
-cmake --preset release -S src
-cmake --build --preset release
-```
-
-### Running Tests
-
-```bash
-cd src
-ctest --preset debug --output-on-failure
-```
-
-### Generating Documentation
-
-```bash
-cmake --build --preset debug --target docs
-# Open build/debug/html/index.html in browser
-```
+- **tracing/** — Hierarchical call tracing (Debug-only) (not ready yet)
+- **tui/** — Terminal UI with real-time visualization (not ready yet)
 
 ## Design Patterns
 
@@ -99,8 +71,7 @@ cmake --build --preset debug --target docs
 
 - **GitHub**: https://github.com/tokKurumi/contur
 - **Issue Tracker**: https://github.com/tokKurumi/contur/issues
-- **Documentation**: https://contur.yudashkin-dev.ru/
 
 ## License
 
-See LICENSE file in the repository.
+See [LICENSE](https://github.com/tokKurumi/contur-2/blob/main/LICENSE) file in the repository.
