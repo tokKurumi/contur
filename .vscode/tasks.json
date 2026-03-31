@@ -73,6 +73,24 @@
             "problemMatcher": []
         },
         {
+            "label": "Run Tests (Release)",
+            "type": "shell",
+            "command": "ctest",
+            "args": ["--preset", "release", "--output-on-failure"],
+            "windows": {
+                "args": ["--preset", "win-release", "--output-on-failure"]
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/src"
+            },
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Clear build artifacts",
             "type": "shell",
             "command": "rm -rf ${workspaceFolder}/src/build/*",
@@ -126,7 +144,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Generate Doxygen Docs",
+            "label": "Generate Doxygen Docs (Debug)",
             "type": "shell",
             "options": {
                 "cwd": "${workspaceFolder}/src"
@@ -153,6 +171,35 @@
                 "panel": "shared"
             },
             "problemMatcher": []
-        }
+        },
+        {
+            "label": "Generate Doxygen Docs (Release)",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/src"
+            },
+            "command": "bash",
+            "args": [
+                "-c",
+                "./build.sh release . && cmake --build --preset release --target docs"
+            ],
+            "windows": {
+                "command": "powershell",
+                "args": [
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-Command",
+                    "& { Set-Location -Path '${workspaceFolder}/src'; .\\build.ps1 -Preset release -SourceDir '${workspaceFolder}/src'; cmake --build --preset release --target docs }"
+                ],
+                "options": {
+                    "cwd": "${workspaceFolder}/src"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
     ]
 }
