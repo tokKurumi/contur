@@ -45,8 +45,7 @@ namespace contur {
     /// @brief Lightweight kernel state snapshot for UI and diagnostics.
     ///
     /// This snapshot is intentionally runtime-agnostic: it exposes kernel-facing
-    /// process/memory/scheduler state and does not include host-runtime threading
-    /// configuration such as thread counts or deterministic/work-stealing flags.
+    /// process/memory/scheduler state.
     struct KernelSnapshot
     {
         /// @brief Current simulation tick.
@@ -79,6 +78,7 @@ namespace contur {
     class IKernel
     {
         public:
+        /// @brief Virtual destructor for interface-safe polymorphic cleanup.
         virtual ~IKernel() = default;
 
         /// @brief Creates and admits a process.

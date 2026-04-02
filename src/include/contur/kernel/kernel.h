@@ -67,28 +67,63 @@ namespace contur {
     class Kernel final : public IKernel
     {
         public:
+        /// @brief Constructs kernel facade from fully prepared dependencies.
+        /// @param deps Owned dependency bundle assembled by KernelBuilder.
         explicit Kernel(KernelDependencies deps);
+
+        /// @brief Destroys kernel facade and owned subsystem graph.
         ~Kernel() override;
 
+        /// @brief Copy construction is disabled.
         Kernel(const Kernel &) = delete;
+
+        /// @brief Copy assignment is disabled.
         Kernel &operator=(const Kernel &) = delete;
+        /// @brief Move-constructs kernel facade.
         Kernel(Kernel &&) noexcept;
+
+        /// @brief Move-assigns kernel facade.
         Kernel &operator=(Kernel &&) noexcept;
 
+        /// @copydoc IKernel::createProcess
         [[nodiscard]] Result<ProcessId> createProcess(const ProcessConfig &config) override;
+
+        /// @copydoc IKernel::terminateProcess
         [[nodiscard]] Result<void> terminateProcess(ProcessId pid) override;
+
+        /// @copydoc IKernel::tick
         [[nodiscard]] Result<void> tick(std::size_t tickBudget = 0) override;
+
+        /// @copydoc IKernel::runForTicks
         [[nodiscard]] Result<void> runForTicks(std::size_t cycles, std::size_t tickBudget = 0) override;
+
+        /// @copydoc IKernel::syscall
         [[nodiscard]] Result<RegisterValue>
         syscall(ProcessId pid, SyscallId id, std::span<const RegisterValue> args) override;
+
+        /// @copydoc IKernel::registerSyscallHandler
         [[nodiscard]] Result<void> registerSyscallHandler(SyscallId id, SyscallHandlerFn handler) override;
+
+        /// @copydoc IKernel::registerSyncPrimitive
         [[nodiscard]] Result<void>
         registerSyncPrimitive(const std::string &name, std::unique_ptr<ISyncPrimitive> primitive) override;
+
+        /// @copydoc IKernel::enterCritical
         [[nodiscard]] Result<void> enterCritical(ProcessId pid, std::string_view primitiveName) override;
+
+        /// @copydoc IKernel::leaveCritical
         [[nodiscard]] Result<void> leaveCritical(ProcessId pid, std::string_view primitiveName) override;
+
+        /// @copydoc IKernel::snapshot
         [[nodiscard]] KernelSnapshot snapshot() const override;
+
+        /// @copydoc IKernel::now
         [[nodiscard]] Tick now() const noexcept override;
+
+        /// @copydoc IKernel::hasProcess
         [[nodiscard]] bool hasProcess(ProcessId pid) const noexcept override;
+
+        /// @copydoc IKernel::processCount
         [[nodiscard]] std::size_t processCount() const noexcept override;
 
         private:
