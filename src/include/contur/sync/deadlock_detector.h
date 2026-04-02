@@ -11,6 +11,9 @@
 
 namespace contur {
 
+    /// @brief Host-thread token used by thread-aware deadlock tracking.
+    using ThreadToken = std::uint64_t;
+
     /// @brief Per-process resource vector used by Banker's safety check.
     struct ResourceAllocation
     {
@@ -40,21 +43,42 @@ namespace contur {
         /// @param resource Acquired resource identifier.
         void onAcquire(ProcessId pid, ResourceId resource);
 
+        /// @brief Thread-aware variant of resource acquisition tracking.
+        void onAcquire(ProcessId pid, ResourceId resource, ThreadToken threadToken);
+
         /// @brief Records release of a resource by a process.
         /// @param pid Process that released resource.
         /// @param resource Released resource identifier.
         void onRelease(ProcessId pid, ResourceId resource);
+
+        /// @brief Thread-aware variant of resource release tracking.
+        void onRelease(ProcessId pid, ResourceId resource, ThreadToken threadToken);
 
         /// @brief Records waiting on a resource and updates wait-for graph.
         /// @param pid Waiting process.
         /// @param resource Requested resource identifier.
         void onWait(ProcessId pid, ResourceId resource);
 
+        /// @brief Thread-aware variant of wait edge tracking.
+        void onWait(ProcessId pid, ResourceId resource, ThreadToken threadToken);
+
         /// @brief Returns true if the current wait-for graph has a cycle.
         [[nodiscard]] bool hasDeadlock() const;
 
         /// @brief Returns process IDs involved in deadlock cycles.
         [[nodiscard]] std::vector<ProcessId> getDeadlockedProcesses() const;
+
+        /// @brief Records internal lock acquisition order for lock-order analysis.
+        void onInternalLockAcquire(ThreadToken threadToken, ResourceId lockId);
+
+        /// @brief Records internal lock release for lock-order analysis.
+        void onInternalLockRelease(ThreadToken threadToken, ResourceId lockId);
+
+        /// @brief Returns true when internal lock-order graph contains a cycle.
+        [[nodiscard]] bool hasInternalLockOrderCycle() const;
+
+        /// @brief Returns lock IDs involved in lock-order cycles.
+        [[nodiscard]] std::vector<ResourceId> getInternalLockOrderCycle() const;
 
         /// @brief Banker's algorithm safety check.
         ///

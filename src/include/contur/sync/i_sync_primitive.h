@@ -3,12 +3,20 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string_view>
 
 #include "contur/core/error.h"
 #include "contur/core/types.h"
 
 namespace contur {
+
+    /// @brief Distinguishes simulated sync resources from kernel-internal locks.
+    enum class SyncLayer : std::uint8_t
+    {
+        KernelInternal,
+        SimulatedResource,
+    };
 
     /// @brief Common interface for synchronization primitives.
     class ISyncPrimitive
@@ -33,6 +41,9 @@ namespace contur {
 
         /// @brief Human-readable primitive name.
         [[nodiscard]] virtual std::string_view name() const noexcept = 0;
+
+        /// @brief Layer classification of the primitive.
+        [[nodiscard]] virtual SyncLayer layer() const noexcept = 0;
     };
 
 } // namespace contur

@@ -49,6 +49,11 @@ namespace contur {
         return "CriticalSection";
     }
 
+    SyncLayer CriticalSection::layer() const noexcept
+    {
+        return impl_->primitive->layer();
+    }
+
     Result<void> CriticalSection::enter(ProcessId pid)
     {
         return acquire(pid);

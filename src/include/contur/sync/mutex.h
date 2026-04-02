@@ -6,6 +6,8 @@
 #include <memory>
 #include <optional>
 
+#include "contur/process/priority.h"
+
 #include "contur/sync/i_sync_primitive.h"
 
 namespace contur {
@@ -36,6 +38,18 @@ namespace contur {
 
         /// @brief Primitive name for diagnostics.
         [[nodiscard]] std::string_view name() const noexcept override;
+
+        /// @brief Layer classification for synchronization model split.
+        [[nodiscard]] SyncLayer layer() const noexcept override;
+
+        /// @brief Registers process base priority used by inheritance logic.
+        [[nodiscard]] Result<void> registerProcessPriority(ProcessId pid, PriorityLevel basePriority);
+
+        /// @brief Effective priority after inheritance boosts.
+        [[nodiscard]] PriorityLevel effectivePriority(ProcessId pid) const noexcept;
+
+        /// @brief Registered base priority.
+        [[nodiscard]] PriorityLevel basePriority(ProcessId pid) const noexcept;
 
         /// @brief True when the mutex is owned by some process.
         [[nodiscard]] bool isLocked() const noexcept;

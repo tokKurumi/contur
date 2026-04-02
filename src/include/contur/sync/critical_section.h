@@ -35,6 +35,9 @@ namespace contur {
         /// @brief Primitive name for diagnostics.
         [[nodiscard]] std::string_view name() const noexcept override;
 
+        /// @brief Layer classification forwarded from underlying primitive.
+        [[nodiscard]] SyncLayer layer() const noexcept override;
+
         /// @brief Alias for acquire().
         [[nodiscard]] Result<void> enter(ProcessId pid);
 

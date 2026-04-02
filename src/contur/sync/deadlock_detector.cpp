@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <functional>
 #include <set>
+#include <utility>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -13,20 +14,42 @@ namespace contur {
 
     struct DeadlockDetector::Impl
     {
-        std::unordered_map<ResourceId, std::unordered_set<ProcessId>> resourceOwners;
-        std::unordered_map<ProcessId, std::unordered_set<ProcessId>> waitFor;
-
-        void clearOutgoing(ProcessId pid)
+        struct WaitNode
         {
-            waitFor.erase(pid);
+            ProcessId pid = INVALID_PID;
+            ThreadToken threadToken = 0;
+
+            [[nodiscard]] bool operator==(const WaitNode &other) const noexcept
+            {
+                return pid == other.pid && threadToken == other.threadToken;
+            }
+        };
+
+        struct WaitNodeHash
+        {
+            [[nodiscard]] std::size_t operator()(const WaitNode &node) const noexcept
+            {
+                return std::hash<ProcessId>{}(node.pid) ^ (std::hash<ThreadToken>{}(node.threadToken) << 1U);
+            }
+        };
+
+        std::unordered_map<ResourceId, std::unordered_set<WaitNode, WaitNodeHash>> resourceOwners;
+        std::unordered_map<WaitNode, std::unordered_set<WaitNode, WaitNodeHash>, WaitNodeHash> waitFor;
+
+        std::unordered_map<ThreadToken, std::vector<ResourceId>> heldInternalLocks;
+        std::unordered_map<ResourceId, std::unordered_set<ResourceId>> lockOrderGraph;
+
+        void clearOutgoing(const WaitNode &node)
+        {
+            waitFor.erase(node);
         }
 
-        [[nodiscard]] bool hasCycle() const
+        [[nodiscard]] bool hasWaitForCycle() const
         {
-            std::unordered_set<ProcessId> visited;
-            std::unordered_set<ProcessId> onStack;
+            std::unordered_set<WaitNode, WaitNodeHash> visited;
+            std::unordered_set<WaitNode, WaitNodeHash> onStack;
 
-            std::function<bool(ProcessId)> dfs = [&](ProcessId node) {
+            std::function<bool(const WaitNode &)> dfs = [&](const WaitNode &node) {
                 if (onStack.find(node) != onStack.end())
                 {
                     return true;
@@ -42,7 +65,7 @@ namespace contur {
                 auto it = waitFor.find(node);
                 if (it != waitFor.end())
                 {
-                    for (ProcessId next : it->second)
+                    for (const WaitNode &next : it->second)
                     {
                         if (dfs(next))
                         {
@@ -55,9 +78,9 @@ namespace contur {
                 return false;
             };
 
-            for (const auto &[pid, _] : waitFor)
+            for (const auto &[node, _] : waitFor)
             {
-                if (dfs(pid))
+                if (dfs(node))
                 {
                     return true;
                 }
@@ -66,20 +89,115 @@ namespace contur {
             return false;
         }
 
-        [[nodiscard]] std::vector<ProcessId> cycleNodes() const
+        [[nodiscard]] std::vector<WaitNode> waitForCycleNodes() const
         {
-            std::set<ProcessId> cycleSet;
-            std::unordered_set<ProcessId> visited;
-            std::vector<ProcessId> stack;
+            std::set<std::pair<ProcessId, ThreadToken>> cycleSet;
+            std::unordered_set<WaitNode, WaitNodeHash> visited;
+            std::vector<WaitNode> stack;
 
-            std::function<void(ProcessId)> dfs = [&](ProcessId node) {
+            std::function<void(const WaitNode &)> dfs = [&](const WaitNode &node) {
                 visited.insert(node);
                 stack.push_back(node);
 
                 auto it = waitFor.find(node);
                 if (it != waitFor.end())
                 {
-                    for (ProcessId next : it->second)
+                    for (const WaitNode &next : it->second)
+                    {
+                        auto pos = std::find(stack.begin(), stack.end(), next);
+                        if (pos != stack.end())
+                        {
+                            for (auto cyc = pos; cyc != stack.end(); ++cyc)
+                            {
+                                cycleSet.emplace(cyc->pid, cyc->threadToken);
+                            }
+                        }
+                        else if (visited.find(next) == visited.end())
+                        {
+                            dfs(next);
+                        }
+                    }
+                }
+
+                stack.pop_back();
+            };
+
+            for (const auto &[node, _] : waitFor)
+            {
+                if (visited.find(node) == visited.end())
+                {
+                    dfs(node);
+                }
+            }
+
+            std::vector<WaitNode> nodes;
+            nodes.reserve(cycleSet.size());
+            for (const auto &[pid, threadToken] : cycleSet)
+            {
+                nodes.push_back(WaitNode{.pid = pid, .threadToken = threadToken});
+            }
+            return nodes;
+        }
+
+        [[nodiscard]] bool hasLockOrderCycle() const
+        {
+            std::unordered_set<ResourceId> visited;
+            std::unordered_set<ResourceId> onStack;
+
+            std::function<bool(ResourceId)> dfs = [&](ResourceId lockId) {
+                if (onStack.find(lockId) != onStack.end())
+                {
+                    return true;
+                }
+                if (visited.find(lockId) != visited.end())
+                {
+                    return false;
+                }
+
+                visited.insert(lockId);
+                onStack.insert(lockId);
+
+                auto it = lockOrderGraph.find(lockId);
+                if (it != lockOrderGraph.end())
+                {
+                    for (ResourceId next : it->second)
+                    {
+                        if (dfs(next))
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                onStack.erase(lockId);
+                return false;
+            };
+
+            for (const auto &[lockId, _] : lockOrderGraph)
+            {
+                if (dfs(lockId))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        [[nodiscard]] std::vector<ResourceId> lockOrderCycleNodes() const
+        {
+            std::set<ResourceId> cycleSet;
+            std::unordered_set<ResourceId> visited;
+            std::vector<ResourceId> stack;
+
+            std::function<void(ResourceId)> dfs = [&](ResourceId lockId) {
+                visited.insert(lockId);
+                stack.push_back(lockId);
+
+                auto it = lockOrderGraph.find(lockId);
+                if (it != lockOrderGraph.end())
+                {
+                    for (ResourceId next : it->second)
                     {
                         auto pos = std::find(stack.begin(), stack.end(), next);
                         if (pos != stack.end())
@@ -99,15 +217,15 @@ namespace contur {
                 stack.pop_back();
             };
 
-            for (const auto &[pid, _] : waitFor)
+            for (const auto &[lockId, _] : lockOrderGraph)
             {
-                if (visited.find(pid) == visited.end())
+                if (visited.find(lockId) == visited.end())
                 {
-                    dfs(pid);
+                    dfs(lockId);
                 }
             }
 
-            return std::vector<ProcessId>(cycleSet.begin(), cycleSet.end());
+            return std::vector<ResourceId>(cycleSet.begin(), cycleSet.end());
         }
     };
 
@@ -121,16 +239,27 @@ namespace contur {
 
     void DeadlockDetector::onAcquire(ProcessId pid, ResourceId resource)
     {
+        onAcquire(pid, resource, 0);
+    }
+
+    void DeadlockDetector::onAcquire(ProcessId pid, ResourceId resource, ThreadToken threadToken)
+    {
         if (pid == INVALID_PID)
         {
             return;
         }
 
-        impl_->resourceOwners[resource].insert(pid);
-        impl_->clearOutgoing(pid);
+        Impl::WaitNode node{.pid = pid, .threadToken = threadToken};
+        impl_->resourceOwners[resource].insert(node);
+        impl_->clearOutgoing(node);
     }
 
     void DeadlockDetector::onRelease(ProcessId pid, ResourceId resource)
+    {
+        onRelease(pid, resource, 0);
+    }
+
+    void DeadlockDetector::onRelease(ProcessId pid, ResourceId resource, ThreadToken threadToken)
     {
         auto ownerIt = impl_->resourceOwners.find(resource);
         if (ownerIt == impl_->resourceOwners.end())
@@ -138,7 +267,7 @@ namespace contur {
             return;
         }
 
-        ownerIt->second.erase(pid);
+        ownerIt->second.erase(Impl::WaitNode{.pid = pid, .threadToken = threadToken});
         if (ownerIt->second.empty())
         {
             impl_->resourceOwners.erase(ownerIt);
@@ -147,12 +276,18 @@ namespace contur {
 
     void DeadlockDetector::onWait(ProcessId pid, ResourceId resource)
     {
+        onWait(pid, resource, 0);
+    }
+
+    void DeadlockDetector::onWait(ProcessId pid, ResourceId resource, ThreadToken threadToken)
+    {
         if (pid == INVALID_PID)
         {
             return;
         }
 
-        impl_->clearOutgoing(pid);
+        Impl::WaitNode waitingNode{.pid = pid, .threadToken = threadToken};
+        impl_->clearOutgoing(waitingNode);
 
         auto ownerIt = impl_->resourceOwners.find(resource);
         if (ownerIt == impl_->resourceOwners.end())
@@ -160,23 +295,72 @@ namespace contur {
             return;
         }
 
-        for (ProcessId owner : ownerIt->second)
+        for (const Impl::WaitNode &owner : ownerIt->second)
         {
-            if (owner != pid)
+            if (!(owner == waitingNode))
             {
-                impl_->waitFor[pid].insert(owner);
+                impl_->waitFor[waitingNode].insert(owner);
             }
         }
     }
 
     bool DeadlockDetector::hasDeadlock() const
     {
-        return impl_->hasCycle();
+        return impl_->hasWaitForCycle() || impl_->hasLockOrderCycle();
     }
 
     std::vector<ProcessId> DeadlockDetector::getDeadlockedProcesses() const
     {
-        return impl_->cycleNodes();
+        std::set<ProcessId> processSet;
+        for (const auto &node : impl_->waitForCycleNodes())
+        {
+            processSet.insert(node.pid);
+        }
+        return std::vector<ProcessId>(processSet.begin(), processSet.end());
+    }
+
+    void DeadlockDetector::onInternalLockAcquire(ThreadToken threadToken, ResourceId lockId)
+    {
+        auto &held = impl_->heldInternalLocks[threadToken];
+        for (ResourceId heldLock : held)
+        {
+            if (heldLock != lockId)
+            {
+                impl_->lockOrderGraph[heldLock].insert(lockId);
+            }
+        }
+        held.push_back(lockId);
+    }
+
+    void DeadlockDetector::onInternalLockRelease(ThreadToken threadToken, ResourceId lockId)
+    {
+        auto heldIt = impl_->heldInternalLocks.find(threadToken);
+        if (heldIt == impl_->heldInternalLocks.end())
+        {
+            return;
+        }
+
+        auto &held = heldIt->second;
+        auto lockIt = std::find(held.begin(), held.end(), lockId);
+        if (lockIt != held.end())
+        {
+            held.erase(lockIt);
+        }
+
+        if (held.empty())
+        {
+            impl_->heldInternalLocks.erase(heldIt);
+        }
+    }
+
+    bool DeadlockDetector::hasInternalLockOrderCycle() const
+    {
+        return impl_->hasLockOrderCycle();
+    }
+
+    std::vector<ResourceId> DeadlockDetector::getInternalLockOrderCycle() const
+    {
+        return impl_->lockOrderCycleNodes();
     }
 
     bool DeadlockDetector::isSafeState(
