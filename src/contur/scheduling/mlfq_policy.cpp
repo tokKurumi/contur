@@ -7,14 +7,13 @@
 
 #include "contur/core/clock.h"
 
-#include "contur/process/pcb.h"
-
 namespace contur {
 
     namespace {
-        [[nodiscard]] std::size_t priorityToLevel(const PCB &pcb, std::size_t levelCount) noexcept
+        [[nodiscard]] std::size_t
+        priorityToLevel(const SchedulingProcessSnapshot &process, std::size_t levelCount) noexcept
         {
-            std::size_t level = static_cast<std::size_t>(pcb.priority().effective);
+            std::size_t level = static_cast<std::size_t>(process.effectivePriority);
             if (levelCount == 0)
             {
                 return 0;
@@ -49,7 +48,7 @@ namespace contur {
     }
 
     ProcessId
-    MlfqPolicy::selectNext(const std::vector<std::reference_wrapper<const PCB>> &readyQueue, const IClock &clock) const
+    MlfqPolicy::selectNext(const std::vector<SchedulingProcessSnapshot> &readyQueue, const IClock &clock) const
     {
         (void)clock;
         if (readyQueue.empty())
@@ -58,26 +57,30 @@ namespace contur {
         }
 
         auto selected = std::min_element(readyQueue.begin(), readyQueue.end(), [this](const auto &a, const auto &b) {
-            std::size_t levelA = priorityToLevel(a.get(), levelTimeSlices_.size());
-            std::size_t levelB = priorityToLevel(b.get(), levelTimeSlices_.size());
+            std::size_t levelA = priorityToLevel(a, levelTimeSlices_.size());
+            std::size_t levelB = priorityToLevel(b, levelTimeSlices_.size());
 
             if (levelA != levelB)
             {
                 return levelA < levelB;
             }
 
-            if (a.get().timing().lastStateChange != b.get().timing().lastStateChange)
+            if (a.lastStateChange != b.lastStateChange)
             {
-                return a.get().timing().lastStateChange < b.get().timing().lastStateChange;
+                return a.lastStateChange < b.lastStateChange;
             }
 
-            return a.get().id() < b.get().id();
+            return a.pid < b.pid;
         });
 
-        return selected->get().id();
+        return selected->pid;
     }
 
-    bool MlfqPolicy::shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const
+    bool MlfqPolicy::shouldPreempt(
+        const SchedulingProcessSnapshot &running,
+        const SchedulingProcessSnapshot &candidate,
+        const IClock &clock
+    ) const
     {
         std::size_t runningLevel = priorityToLevel(running, levelTimeSlices_.size());
         std::size_t candidateLevel = priorityToLevel(candidate, levelTimeSlices_.size());
@@ -87,7 +90,7 @@ namespace contur {
             return true;
         }
 
-        Tick elapsed = clock.now() - running.timing().lastStateChange;
+        Tick elapsed = clock.now() - running.lastStateChange;
         return elapsed >= levelTimeSlices_[runningLevel];
     }
 

@@ -25,12 +25,15 @@ namespace contur {
         [[nodiscard]] std::string_view name() const noexcept override;
 
         /// @brief Selects next process according to MLFQ level ordering.
-        [[nodiscard]] ProcessId selectNext(
-            const std::vector<std::reference_wrapper<const PCB>> &readyQueue, const IClock &clock
-        ) const override;
+        [[nodiscard]] ProcessId
+        selectNext(const std::vector<SchedulingProcessSnapshot> &readyQueue, const IClock &clock) const override;
 
         /// @brief Returns true when running process should be preempted.
-        [[nodiscard]] bool shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const override;
+        [[nodiscard]] bool shouldPreempt(
+            const SchedulingProcessSnapshot &running,
+            const SchedulingProcessSnapshot &candidate,
+            const IClock &clock
+        ) const override;
 
         /// @brief Configured level time slices.
         [[nodiscard]] const std::vector<std::size_t> &levelTimeSlices() const noexcept;

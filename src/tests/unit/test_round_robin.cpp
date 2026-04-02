@@ -1,8 +1,6 @@
 /// @file test_round_robin.cpp
 /// @brief Unit tests for Round Robin scheduling policy.
 
-#include <functional>
-
 #include <gtest/gtest.h>
 
 #include "contur/core/clock.h"
@@ -24,7 +22,10 @@ TEST(RoundRobinPolicyTest, SelectsOldestReadyByLastStateChange)
     ASSERT_TRUE(p1.setState(ProcessState::Ready, 3));
     ASSERT_TRUE(p2.setState(ProcessState::Ready, 1));
 
-    std::vector<std::reference_wrapper<const PCB>> ready = {std::cref(p1), std::cref(p2)};
+    std::vector<SchedulingProcessSnapshot> ready = {
+        {.pid = p1.id(), .lastStateChange = p1.timing().lastStateChange},
+        {.pid = p2.id(), .lastStateChange = p2.timing().lastStateChange},
+    };
     EXPECT_EQ(policy.selectNext(ready, clock), 2u);
 }
 
@@ -34,7 +35,7 @@ TEST(RoundRobinPolicyTest, PreemptsWhenTimeSliceExpires)
     RoundRobinPolicy policy(2);
 
     PCB running(1, "running");
-    PCB candidate(2, "candidate");
+    SchedulingProcessSnapshot candidate{.pid = 2};
 
     ASSERT_TRUE(running.setState(ProcessState::Ready, 0));
     ASSERT_TRUE(running.setState(ProcessState::Running, 1));
@@ -43,7 +44,8 @@ TEST(RoundRobinPolicyTest, PreemptsWhenTimeSliceExpires)
     clock.tick(); // now = 2
     clock.tick(); // now = 3
 
-    EXPECT_TRUE(policy.shouldPreempt(running, candidate, clock));
+    SchedulingProcessSnapshot runningSnapshot{.pid = running.id(), .lastStateChange = running.timing().lastStateChange};
+    EXPECT_TRUE(policy.shouldPreempt(runningSnapshot, candidate, clock));
 }
 
 TEST(RoundRobinPolicyTest, DoesNotPreemptBeforeTimeSlice)
@@ -52,7 +54,7 @@ TEST(RoundRobinPolicyTest, DoesNotPreemptBeforeTimeSlice)
     RoundRobinPolicy policy(5);
 
     PCB running(1, "running");
-    PCB candidate(2, "candidate");
+    SchedulingProcessSnapshot candidate{.pid = 2};
 
     ASSERT_TRUE(running.setState(ProcessState::Ready, 0));
     ASSERT_TRUE(running.setState(ProcessState::Running, 1));
@@ -60,5 +62,6 @@ TEST(RoundRobinPolicyTest, DoesNotPreemptBeforeTimeSlice)
     clock.tick(); // now = 1
     clock.tick(); // now = 2
 
-    EXPECT_FALSE(policy.shouldPreempt(running, candidate, clock));
+    SchedulingProcessSnapshot runningSnapshot{.pid = running.id(), .lastStateChange = running.timing().lastStateChange};
+    EXPECT_FALSE(policy.shouldPreempt(runningSnapshot, candidate, clock));
 }

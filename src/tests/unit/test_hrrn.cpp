@@ -1,8 +1,6 @@
 /// @file test_hrrn.cpp
 /// @brief Unit tests for HRRN scheduling policy.
 
-#include <functional>
-
 #include <gtest/gtest.h>
 
 #include "contur/core/clock.h"
@@ -30,7 +28,11 @@ TEST(HrrnPolicyTest, SelectsHighestResponseRatio)
     p3.timing().estimatedBurst = 5;
     p3.timing().totalWaitTime = 5; // ratio 2.0
 
-    std::vector<std::reference_wrapper<const PCB>> ready = {std::cref(p1), std::cref(p2), std::cref(p3)};
+    std::vector<SchedulingProcessSnapshot> ready = {
+        {.pid = p1.id(), .estimatedBurst = p1.timing().estimatedBurst, .totalWaitTime = p1.timing().totalWaitTime},
+        {.pid = p2.id(), .estimatedBurst = p2.timing().estimatedBurst, .totalWaitTime = p2.timing().totalWaitTime},
+        {.pid = p3.id(), .estimatedBurst = p3.timing().estimatedBurst, .totalWaitTime = p3.timing().totalWaitTime},
+    };
     EXPECT_EQ(policy.selectNext(ready, clock), 2u);
 }
 
@@ -38,7 +40,7 @@ TEST(HrrnPolicyTest, ShouldNotPreempt)
 {
     SimulationClock clock;
     HrrnPolicy policy;
-    PCB running(1, "running");
-    PCB candidate(2, "candidate");
+    SchedulingProcessSnapshot running{.pid = 1};
+    SchedulingProcessSnapshot candidate{.pid = 2};
     EXPECT_FALSE(policy.shouldPreempt(running, candidate, clock));
 }

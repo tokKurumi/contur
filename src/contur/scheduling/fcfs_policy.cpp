@@ -7,8 +7,6 @@
 
 #include "contur/core/clock.h"
 
-#include "contur/process/pcb.h"
-
 namespace contur {
 
     std::string_view FcfsPolicy::name() const noexcept
@@ -16,8 +14,8 @@ namespace contur {
         return "FCFS";
     }
 
-    ProcessId
-    FcfsPolicy::selectNext(const std::vector<std::reference_wrapper<const PCB>> &readyQueue, const IClock &clock) const
+    ProcessId FcfsPolicy::selectNext(const std::vector<SchedulingProcessSnapshot> &readyQueue, const IClock &clock)
+        const
     {
         (void)clock;
         if (readyQueue.empty())
@@ -26,17 +24,21 @@ namespace contur {
         }
 
         auto selected = std::min_element(readyQueue.begin(), readyQueue.end(), [](const auto &a, const auto &b) {
-            if (a.get().timing().arrivalTime != b.get().timing().arrivalTime)
+            if (a.arrivalTime != b.arrivalTime)
             {
-                return a.get().timing().arrivalTime < b.get().timing().arrivalTime;
+                return a.arrivalTime < b.arrivalTime;
             }
-            return a.get().id() < b.get().id();
+            return a.pid < b.pid;
         });
 
-        return selected->get().id();
+        return selected->pid;
     }
 
-    bool FcfsPolicy::shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const
+    bool FcfsPolicy::shouldPreempt(
+        const SchedulingProcessSnapshot &running,
+        const SchedulingProcessSnapshot &candidate,
+        const IClock &clock
+    ) const
     {
         (void)running;
         (void)candidate;

@@ -24,12 +24,15 @@ namespace contur {
         [[nodiscard]] std::string_view name() const noexcept override;
 
         /// @brief Selects the next process in round-robin queue order.
-        [[nodiscard]] ProcessId selectNext(
-            const std::vector<std::reference_wrapper<const PCB>> &readyQueue, const IClock &clock
-        ) const override;
+        [[nodiscard]] ProcessId
+        selectNext(const std::vector<SchedulingProcessSnapshot> &readyQueue, const IClock &clock) const override;
 
         /// @brief Returns true if running process exhausted its slice.
-        [[nodiscard]] bool shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const override;
+        [[nodiscard]] bool shouldPreempt(
+            const SchedulingProcessSnapshot &running,
+            const SchedulingProcessSnapshot &candidate,
+            const IClock &clock
+        ) const override;
 
         /// @brief Configured time slice.
         [[nodiscard]] std::size_t timeSlice() const noexcept;

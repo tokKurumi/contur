@@ -17,7 +17,7 @@ namespace contur {
     {
         public:
         /// @brief Constructs scheduler with initial policy.
-        /// @param policy Non-null scheduling policy implementation.
+        /// @param policy Initial scheduling policy. Null policy leaves scheduler unconfigured.
         explicit Scheduler(std::unique_ptr<ISchedulingPolicy> policy);
         ~Scheduler() override;
 
@@ -50,8 +50,26 @@ namespace contur {
         /// @brief Snapshot of blocked queue process IDs.
         [[nodiscard]] std::vector<ProcessId> getBlockedSnapshot() const override;
 
-        /// @brief Currently running process ID or INVALID_PID.
-        [[nodiscard]] ProcessId runningProcess() const noexcept override;
+        /// @brief Configures per-core lane count for ready queues.
+        [[nodiscard]] Result<void> configureLanes(std::size_t laneCount) override;
+
+        /// @brief Configured scheduler lane count.
+        [[nodiscard]] std::size_t laneCount() const noexcept override;
+
+        /// @brief Enqueues process into a specific lane.
+        [[nodiscard]] Result<void> enqueueToLane(PCB &pcb, std::size_t laneIndex, Tick currentTick) override;
+
+        /// @brief Selects next process for a specific lane.
+        [[nodiscard]] Result<ProcessId> selectNextForLane(std::size_t laneIndex, const IClock &clock) override;
+
+        /// @brief Steals work for thief lane and selects next process there.
+        [[nodiscard]] Result<ProcessId> stealNextForLane(std::size_t thiefLane, const IClock &clock) override;
+
+        /// @brief Snapshot of ready queues per lane.
+        [[nodiscard]] std::vector<std::vector<ProcessId>> getPerLaneQueueSnapshot() const override;
+
+        /// @brief Currently running process IDs across scheduler lanes.
+        [[nodiscard]] std::vector<ProcessId> runningProcesses() const override;
 
         /// @brief Replaces the active scheduling policy.
         [[nodiscard]] Result<void> setPolicy(std::unique_ptr<ISchedulingPolicy> policy) override;

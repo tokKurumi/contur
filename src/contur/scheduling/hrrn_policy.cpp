@@ -7,15 +7,13 @@
 
 #include "contur/core/clock.h"
 
-#include "contur/process/pcb.h"
-
 namespace contur {
 
     namespace {
-        [[nodiscard]] double responseRatio(const PCB &pcb) noexcept
+        [[nodiscard]] double responseRatio(const SchedulingProcessSnapshot &process) noexcept
         {
-            double service = static_cast<double>(pcb.timing().estimatedBurst == 0 ? 1 : pcb.timing().estimatedBurst);
-            double wait = static_cast<double>(pcb.timing().totalWaitTime);
+            double service = static_cast<double>(process.estimatedBurst == 0 ? 1 : process.estimatedBurst);
+            double wait = static_cast<double>(process.totalWaitTime);
             return (wait + service) / service;
         }
     } // namespace
@@ -26,7 +24,7 @@ namespace contur {
     }
 
     ProcessId
-    HrrnPolicy::selectNext(const std::vector<std::reference_wrapper<const PCB>> &readyQueue, const IClock &clock) const
+    HrrnPolicy::selectNext(const std::vector<SchedulingProcessSnapshot> &readyQueue, const IClock &clock) const
     {
         (void)clock;
         if (readyQueue.empty())
@@ -35,18 +33,22 @@ namespace contur {
         }
 
         auto selected = std::max_element(readyQueue.begin(), readyQueue.end(), [](const auto &a, const auto &b) {
-            double lhs = responseRatio(a.get());
-            double rhs = responseRatio(b.get());
+            double lhs = responseRatio(a);
+            double rhs = responseRatio(b);
             if (lhs != rhs)
             {
                 return lhs < rhs;
             }
-            return a.get().id() > b.get().id();
+            return a.pid > b.pid;
         });
-        return selected->get().id();
+        return selected->pid;
     }
 
-    bool HrrnPolicy::shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const
+    bool HrrnPolicy::shouldPreempt(
+        const SchedulingProcessSnapshot &running,
+        const SchedulingProcessSnapshot &candidate,
+        const IClock &clock
+    ) const
     {
         (void)running;
         (void)candidate;

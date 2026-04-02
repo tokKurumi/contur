@@ -7,23 +7,21 @@
 
 #include "contur/core/clock.h"
 
-#include "contur/process/pcb.h"
-
 namespace contur {
 
     namespace {
-        [[nodiscard]] bool betterPriority(const PCB &lhs, const PCB &rhs) noexcept
+        [[nodiscard]] bool
+        betterPriority(const SchedulingProcessSnapshot &lhs, const SchedulingProcessSnapshot &rhs) noexcept
         {
-            if (lhs.priority().effective != rhs.priority().effective)
+            if (lhs.effectivePriority != rhs.effectivePriority)
             {
-                return static_cast<std::int8_t>(lhs.priority().effective) <
-                       static_cast<std::int8_t>(rhs.priority().effective);
+                return static_cast<std::int8_t>(lhs.effectivePriority) < static_cast<std::int8_t>(rhs.effectivePriority);
             }
-            if (lhs.priority().nice != rhs.priority().nice)
+            if (lhs.nice != rhs.nice)
             {
-                return lhs.priority().nice < rhs.priority().nice;
+                return lhs.nice < rhs.nice;
             }
-            return lhs.id() < rhs.id();
+            return lhs.pid < rhs.pid;
         }
     } // namespace
 
@@ -32,9 +30,8 @@ namespace contur {
         return "Priority";
     }
 
-    ProcessId PriorityPolicy::selectNext(
-        const std::vector<std::reference_wrapper<const PCB>> &readyQueue, const IClock &clock
-    ) const
+    ProcessId
+    PriorityPolicy::selectNext(const std::vector<SchedulingProcessSnapshot> &readyQueue, const IClock &clock) const
     {
         (void)clock;
         if (readyQueue.empty())
@@ -42,13 +39,17 @@ namespace contur {
             return INVALID_PID;
         }
 
-        auto selected = std::min_element(readyQueue.begin(), readyQueue.end(), [](const auto &a, const auto &b) {
-            return betterPriority(a.get(), b.get());
-        });
-        return selected->get().id();
+        auto selected = std::min_element(
+            readyQueue.begin(), readyQueue.end(), [](const auto &a, const auto &b) { return betterPriority(a, b); }
+        );
+        return selected->pid;
     }
 
-    bool PriorityPolicy::shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const
+    bool PriorityPolicy::shouldPreempt(
+        const SchedulingProcessSnapshot &running,
+        const SchedulingProcessSnapshot &candidate,
+        const IClock &clock
+    ) const
     {
         (void)clock;
         return betterPriority(candidate, running);

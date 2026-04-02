@@ -23,7 +23,9 @@ TEST(SchedulerTest, EnqueueAndSelectMovesProcessToRunning)
     auto selected = scheduler.selectNext(clock);
     ASSERT_TRUE(selected.isOk());
     EXPECT_EQ(selected.value(), 1u);
-    EXPECT_EQ(scheduler.runningProcess(), 1u);
+    auto running = scheduler.runningProcesses();
+    ASSERT_EQ(running.size(), 1u);
+    EXPECT_EQ(running.front(), 1u);
     EXPECT_EQ(p1.state(), ProcessState::Running);
 }
 
@@ -37,7 +39,7 @@ TEST(SchedulerTest, BlockAndUnblockTransitions)
     ASSERT_TRUE(scheduler.selectNext(clock).isOk());
 
     ASSERT_TRUE(scheduler.blockRunning(5).isOk());
-    EXPECT_EQ(scheduler.runningProcess(), INVALID_PID);
+    EXPECT_TRUE(scheduler.runningProcesses().empty());
     EXPECT_EQ(p1.state(), ProcessState::Blocked);
 
     ASSERT_TRUE(scheduler.unblock(1, 7).isOk());
@@ -56,5 +58,30 @@ TEST(SchedulerTest, TerminateRunningProcess)
 
     ASSERT_TRUE(scheduler.terminate(1, 10).isOk());
     EXPECT_EQ(p1.state(), ProcessState::Terminated);
-    EXPECT_EQ(scheduler.runningProcess(), INVALID_PID);
+    EXPECT_TRUE(scheduler.runningProcesses().empty());
+}
+
+TEST(SchedulerTest, NullPolicyReturnsInvalidStateInsteadOfThrow)
+{
+    SimulationClock clock;
+    Scheduler scheduler(nullptr);
+
+    PCB p1(1, "p1");
+    ASSERT_TRUE(scheduler.enqueue(p1, 0).isOk());
+
+    auto selected = scheduler.selectNext(clock);
+
+    ASSERT_TRUE(selected.isError());
+    EXPECT_EQ(selected.errorCode(), ErrorCode::InvalidState);
+    EXPECT_EQ(scheduler.policyName(), "Unconfigured");
+}
+
+TEST(SchedulerTest, SetPolicyRejectsNullWithInvalidState)
+{
+    Scheduler scheduler(std::make_unique<FcfsPolicy>());
+
+    auto result = scheduler.setPolicy(nullptr);
+
+    ASSERT_TRUE(result.isError());
+    EXPECT_EQ(result.errorCode(), ErrorCode::InvalidState);
 }

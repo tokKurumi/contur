@@ -18,12 +18,15 @@ namespace contur {
         [[nodiscard]] std::string_view name() const noexcept override;
 
         /// @brief Selects process with highest effective priority.
-        [[nodiscard]] ProcessId selectNext(
-            const std::vector<std::reference_wrapper<const PCB>> &readyQueue, const IClock &clock
-        ) const override;
+        [[nodiscard]] ProcessId
+        selectNext(const std::vector<SchedulingProcessSnapshot> &readyQueue, const IClock &clock) const override;
 
         /// @brief Preempts when candidate priority outranks running process.
-        [[nodiscard]] bool shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const override;
+        [[nodiscard]] bool shouldPreempt(
+            const SchedulingProcessSnapshot &running,
+            const SchedulingProcessSnapshot &candidate,
+            const IClock &clock
+        ) const override;
     };
 
 } // namespace contur

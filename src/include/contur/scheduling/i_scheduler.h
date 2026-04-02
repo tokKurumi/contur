@@ -65,13 +65,44 @@ namespace contur {
         /// @return Ordered list of process identifiers currently in the blocked queue.
         [[nodiscard]] virtual std::vector<ProcessId> getBlockedSnapshot() const = 0;
 
-        /// @brief Returns currently running process, or INVALID_PID.
-        /// @return Running process identifier, or INVALID_PID if CPU is idle.
-        [[nodiscard]] virtual ProcessId runningProcess() const noexcept = 0;
+        /// @brief Configures scheduler lane count used for per-core ready queues.
+        /// @param laneCount Number of scheduler lanes (must be >= 1).
+        /// @return Ok on success; InvalidArgument for zero; InvalidState if scheduler is not empty.
+        [[nodiscard]] virtual Result<void> configureLanes(std::size_t laneCount) = 0;
+
+        /// @brief Returns number of configured scheduler lanes.
+        [[nodiscard]] virtual std::size_t laneCount() const noexcept = 0;
+
+        /// @brief Enqueues process into a specific ready lane.
+        /// @param pcb Process control block to add.
+        /// @param laneIndex Target lane index.
+        /// @param currentTick Simulation tick used for queue timing metadata.
+        /// @return Ok on success; InvalidArgument for bad lane/pid; InvalidState for invalid transition.
+        [[nodiscard]] virtual Result<void> enqueueToLane(PCB &pcb, std::size_t laneIndex, Tick currentTick) = 0;
+
+        /// @brief Selects/runs next process on a specific lane.
+        /// @param laneIndex Target lane index.
+        /// @param clock Simulation clock for policy decisions.
+        /// @return Selected process id, or NotFound/InvalidState.
+        [[nodiscard]] virtual Result<ProcessId> selectNextForLane(std::size_t laneIndex, const IClock &clock) = 0;
+
+        /// @brief Steals one ready process from another lane and schedules it on thief lane.
+        /// @param thiefLane Lane that steals work.
+        /// @param clock Simulation clock for selection and preemption checks.
+        /// @return Selected process id on thief lane, or NotFound/InvalidState.
+        [[nodiscard]] virtual Result<ProcessId> stealNextForLane(std::size_t thiefLane, const IClock &clock) = 0;
+
+        /// @brief Returns per-lane ready queue snapshots.
+        /// @return One ready queue snapshot per lane.
+        [[nodiscard]] virtual std::vector<std::vector<ProcessId>> getPerLaneQueueSnapshot() const = 0;
+
+        /// @brief Returns currently running process IDs across scheduler lanes.
+        /// @return Running process identifiers; empty when all lanes are idle.
+        [[nodiscard]] virtual std::vector<ProcessId> runningProcesses() const = 0;
 
         /// @brief Replaces scheduling policy at runtime.
         /// @param policy New scheduling policy instance.
-        /// @return Ok on success; error if policy is null or unsupported.
+        /// @return Ok on success; InvalidState if policy is null.
         [[nodiscard]] virtual Result<void> setPolicy(std::unique_ptr<ISchedulingPolicy> policy) = 0;
     };
 

@@ -1,8 +1,6 @@
 /// @file test_srt.cpp
 /// @brief Unit tests for SRT scheduling policy.
 
-#include <functional>
-
 #include <gtest/gtest.h>
 
 #include "contur/core/clock.h"
@@ -25,7 +23,11 @@ TEST(SrtPolicyTest, SelectsSmallestRemainingBurst)
     p2.timing().remainingBurst = 2;
     p3.timing().remainingBurst = 5;
 
-    std::vector<std::reference_wrapper<const PCB>> ready = {std::cref(p1), std::cref(p2), std::cref(p3)};
+    std::vector<SchedulingProcessSnapshot> ready = {
+        {.pid = p1.id(), .remainingBurst = p1.timing().remainingBurst},
+        {.pid = p2.id(), .remainingBurst = p2.timing().remainingBurst},
+        {.pid = p3.id(), .remainingBurst = p3.timing().remainingBurst},
+    };
     EXPECT_EQ(policy.selectNext(ready, clock), 2u);
 }
 
@@ -34,11 +36,8 @@ TEST(SrtPolicyTest, PreemptsWhenCandidateHasSmallerRemaining)
     SimulationClock clock;
     SrtPolicy policy;
 
-    PCB running(1, "running");
-    PCB candidate(2, "candidate");
-
-    running.timing().remainingBurst = 6;
-    candidate.timing().remainingBurst = 2;
+    SchedulingProcessSnapshot running{.pid = 1, .remainingBurst = 6};
+    SchedulingProcessSnapshot candidate{.pid = 2, .remainingBurst = 2};
 
     EXPECT_TRUE(policy.shouldPreempt(running, candidate, clock));
 }

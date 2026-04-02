@@ -7,20 +7,18 @@
 
 #include "contur/core/clock.h"
 
-#include "contur/process/pcb.h"
-
 namespace contur {
 
     namespace {
-        [[nodiscard]] Tick remaining(const PCB &pcb) noexcept
+        [[nodiscard]] Tick remaining(const SchedulingProcessSnapshot &process) noexcept
         {
-            if (pcb.timing().remainingBurst > 0)
+            if (process.remainingBurst > 0)
             {
-                return pcb.timing().remainingBurst;
+                return process.remainingBurst;
             }
-            if (pcb.timing().estimatedBurst > 0)
+            if (process.estimatedBurst > 0)
             {
-                return pcb.timing().estimatedBurst;
+                return process.estimatedBurst;
             }
             return 1;
         }
@@ -32,7 +30,7 @@ namespace contur {
     }
 
     ProcessId
-    SrtPolicy::selectNext(const std::vector<std::reference_wrapper<const PCB>> &readyQueue, const IClock &clock) const
+    SrtPolicy::selectNext(const std::vector<SchedulingProcessSnapshot> &readyQueue, const IClock &clock) const
     {
         (void)clock;
         if (readyQueue.empty())
@@ -41,18 +39,22 @@ namespace contur {
         }
 
         auto selected = std::min_element(readyQueue.begin(), readyQueue.end(), [](const auto &a, const auto &b) {
-            Tick lhs = remaining(a.get());
-            Tick rhs = remaining(b.get());
+            Tick lhs = remaining(a);
+            Tick rhs = remaining(b);
             if (lhs != rhs)
             {
                 return lhs < rhs;
             }
-            return a.get().id() < b.get().id();
+            return a.pid < b.pid;
         });
-        return selected->get().id();
+        return selected->pid;
     }
 
-    bool SrtPolicy::shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const
+    bool SrtPolicy::shouldPreempt(
+        const SchedulingProcessSnapshot &running,
+        const SchedulingProcessSnapshot &candidate,
+        const IClock &clock
+    ) const
     {
         (void)clock;
         return remaining(candidate) < remaining(running);

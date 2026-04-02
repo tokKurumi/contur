@@ -7,14 +7,12 @@
 
 #include "contur/core/clock.h"
 
-#include "contur/process/pcb.h"
-
 namespace contur {
 
     namespace {
-        [[nodiscard]] Tick serviceTime(const PCB &pcb) noexcept
+        [[nodiscard]] Tick serviceTime(const SchedulingProcessSnapshot &process) noexcept
         {
-            Tick estimate = pcb.timing().estimatedBurst;
+            Tick estimate = process.estimatedBurst;
             return estimate == 0 ? 1 : estimate;
         }
     } // namespace
@@ -24,8 +22,8 @@ namespace contur {
         return "SPN";
     }
 
-    ProcessId
-    SpnPolicy::selectNext(const std::vector<std::reference_wrapper<const PCB>> &readyQueue, const IClock &clock) const
+    ProcessId SpnPolicy::selectNext(const std::vector<SchedulingProcessSnapshot> &readyQueue, const IClock &clock)
+        const
     {
         (void)clock;
         if (readyQueue.empty())
@@ -34,18 +32,22 @@ namespace contur {
         }
 
         auto selected = std::min_element(readyQueue.begin(), readyQueue.end(), [](const auto &a, const auto &b) {
-            Tick lhs = serviceTime(a.get());
-            Tick rhs = serviceTime(b.get());
+            Tick lhs = serviceTime(a);
+            Tick rhs = serviceTime(b);
             if (lhs != rhs)
             {
                 return lhs < rhs;
             }
-            return a.get().id() < b.get().id();
+            return a.pid < b.pid;
         });
-        return selected->get().id();
+        return selected->pid;
     }
 
-    bool SpnPolicy::shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const
+    bool SpnPolicy::shouldPreempt(
+        const SchedulingProcessSnapshot &running,
+        const SchedulingProcessSnapshot &candidate,
+        const IClock &clock
+    ) const
     {
         (void)running;
         (void)candidate;

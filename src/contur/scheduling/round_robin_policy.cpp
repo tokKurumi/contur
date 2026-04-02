@@ -7,8 +7,6 @@
 
 #include "contur/core/clock.h"
 
-#include "contur/process/pcb.h"
-
 namespace contur {
 
     RoundRobinPolicy::RoundRobinPolicy(std::size_t timeSlice)
@@ -20,9 +18,8 @@ namespace contur {
         return "RoundRobin";
     }
 
-    ProcessId RoundRobinPolicy::selectNext(
-        const std::vector<std::reference_wrapper<const PCB>> &readyQueue, const IClock &clock
-    ) const
+    ProcessId
+    RoundRobinPolicy::selectNext(const std::vector<SchedulingProcessSnapshot> &readyQueue, const IClock &clock) const
     {
         (void)clock;
         if (readyQueue.empty())
@@ -31,19 +28,23 @@ namespace contur {
         }
 
         auto selected = std::min_element(readyQueue.begin(), readyQueue.end(), [](const auto &a, const auto &b) {
-            if (a.get().timing().lastStateChange != b.get().timing().lastStateChange)
+            if (a.lastStateChange != b.lastStateChange)
             {
-                return a.get().timing().lastStateChange < b.get().timing().lastStateChange;
+                return a.lastStateChange < b.lastStateChange;
             }
-            return a.get().id() < b.get().id();
+            return a.pid < b.pid;
         });
-        return selected->get().id();
+        return selected->pid;
     }
 
-    bool RoundRobinPolicy::shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const
+    bool RoundRobinPolicy::shouldPreempt(
+        const SchedulingProcessSnapshot &running,
+        const SchedulingProcessSnapshot &candidate,
+        const IClock &clock
+    ) const
     {
         (void)candidate;
-        Tick elapsed = clock.now() - running.timing().lastStateChange;
+        Tick elapsed = clock.now() - running.lastStateChange;
         return elapsed >= timeSlice_;
     }
 

@@ -90,15 +90,19 @@ namespace {
             return "AlwaysUnknownPolicy";
         }
 
-        ProcessId
-        selectNext(const std::vector<std::reference_wrapper<const PCB>> &readyQueue, const IClock &clock) const override
+        ProcessId selectNext(const std::vector<SchedulingProcessSnapshot> &readyQueue, const IClock &clock)
+            const override
         {
             (void)readyQueue;
             (void)clock;
             return 999;
         }
 
-        bool shouldPreempt(const PCB &running, const PCB &candidate, const IClock &clock) const override
+        bool shouldPreempt(
+            const SchedulingProcessSnapshot &running,
+            const SchedulingProcessSnapshot &candidate,
+            const IClock &clock
+        ) const override
         {
             (void)running;
             (void)candidate;
@@ -204,7 +208,7 @@ TEST_F(DispatcherTest, DispatchInterruptedMovesRunningToBlocked)
     auto blocked = scheduler_.getBlockedSnapshot();
     ASSERT_EQ(blocked.size(), 1u);
     EXPECT_EQ(blocked.front(), 2u);
-    EXPECT_EQ(scheduler_.runningProcess(), INVALID_PID);
+    EXPECT_TRUE(scheduler_.runningProcesses().empty());
     EXPECT_TRUE(dispatcher_.hasProcess(2));
 }
 
