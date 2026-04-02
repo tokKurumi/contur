@@ -695,6 +695,124 @@ When **both** tracing and step-by-step mode are active (Debug build with `CONTUR
 
 This creates a "debugger-like" walkthrough of the entire OS simulation.
 
+### 9. Real Host Multithreading (N >= 1 Configurable Threads)
+
+Contur 2 must support both:
+- **N = 1** (baseline, deterministic single-worker path)
+- **N > 1** (real host parallelism via OS threads)
+
+The design target is a single architecture that scales from one to many workers without forking the codebase into two
+different implementations.
+
+#### Core Architecture Rules
+
+1. **One runtime model, two operating points**:
+    - N=1: no behavior regression from current baseline
+    - N>1: same subsystem contracts, concurrent execution enabled
+2. **Policy purity**: scheduling policies (`ISchedulingPolicy`) remain decision logic only. They do not own locks,
+    start threads, or mutate shared runtime state directly.
+3. **Runtime/concurrency separation**:
+    - Dispatcher runtime owns worker threads, queues, synchronization barriers
+    - Scheduler policies consume consistent queue snapshots and return decisions
+4. **No spaghetti locking**: all lock ownership is explicit and local to subsystem boundaries (Dispatcher/Scheduler/MMU/
+    DeviceManager/IPC). No cross-cutting ad-hoc mutex usage.
+
+#### Scheduler + Dispatcher Contracts
+
+- Use **per-core ready queues** with **work stealing** as the default topology for N>1.
+- `MPDispatcher` (or a `DispatcherPool`) is the concurrency host:
+    - creates N worker threads
+    - assigns each worker one logical dispatcher lane
+    - coordinates lifecycle (start, quiesce, stop)
+- Preemption model in N>1:
+    - policies decide preemption candidacy
+    - runtime delivers cross-worker preemption signals/events
+    - only runtime executes context transition mechanics
+- Process ownership invariant:
+    - at any instant, a runnable process is owned by at most one worker lane
+    - ownership transfer is explicit (enqueue/dequeue/steal handoff)
+
+#### Shared Resource Concurrency Model
+
+- **Memory/MMU/Page table**: protect mapping and frame-allocation critical regions; avoid a single global lock when
+    possible.
+- **Devices**: serialize each device command stream (per-device queue/executor), while allowing different devices to
+    run in parallel.
+- **IPC channels**: channel-local synchronization (mutex + condition variable semantics), preserving FIFO/priority
+    guarantees.
+- **Kernel global registries** (PID allocation, process maps, channel maps): explicit guards and lock-order policy.
+
+#### Synchronization Primitives (Two Layers)
+
+Keep two distinct layers to avoid semantic confusion:
+1. **Kernel-internal synchronization** (host mutexes/atomics) used to protect simulator data structures.
+2. **Simulated synchronization primitives** (`Mutex`, `Semaphore`, `CriticalSection`) used as modeled OS resources for
+    simulated processes/threads.
+
+Both layers are required in N>1, and must never be conflated.
+
+#### Deadlock Detection in Multithreaded Mode
+
+Deadlock analysis must cover two graphs:
+1. **Simulated wait-for graph** (simulated process/thread <-> simulated resource)
+2. **Internal lock-order graph** (kernel lock acquisition order across host threads)
+
+Recommended approach:
+- Simulated graph:
+    - cycle detection on consistent snapshot, complexity $O(V + E)$
+    - banker safety checks for modeled multi-resource scenarios, complexity $O(P^2 * R)$
+- Internal lock graph:
+    - detect lock-order cycles from acquisition traces/events
+    - enforce lock hierarchy violations as test failures
+
+To avoid race-induced false positives, detector updates should be event-driven and cycle checks should run on
+consistent snapshots.
+
+#### Deterministic Mode Requirement
+
+For education/tests, N>1 must support deterministic execution mode:
+- fixed synchronization points (epoch/barrier model)
+- stable tie-break ordering (worker id, queue index, sequence number)
+- reproducible trace ordering and process-state transitions
+
+This mode is required for reliable regression tests and demo walkthroughs.
+
+#### Builder + Config Requirements
+
+`KernelBuilder` remains the single composition root. It must wire runtime components without leaking concurrency
+internals into kernel state:
+- runtime strategy/component selection (serial, pool, deterministic runtime variant)
+- runtime-owned threading config (N >= 1, deterministic mode, work stealing)
+- scheduling topology knobs (per-core + steal tuning)
+
+`threading_config` is owned by runtime/dispatcher components. Kernel receives already-configured components and must not
+duplicate runtime numeric knobs in its own state/snapshot.
+
+Default guidance:
+- Debug: deterministic mode ON
+- Release: deterministic mode configurable (default OFF is acceptable if test mode exists)
+
+#### Implementation Guardrails (must be enforced during rollout)
+
+When implementing multithreading incrementally, enforce these non-negotiable rules:
+
+1. **Result-only failure flow**:
+    - Do not use `throw` for scheduler/dispatcher/kernel runtime control paths.
+    - Surface missing configuration/dependencies via explicit `Result<...>::error(ErrorCode::InvalidState)`.
+2. **Strict dependency inversion**:
+    - `MPDispatcher` must not instantiate concrete runtime fallbacks internally.
+    - Runtime strategies are wired only in composition root (`KernelBuilder` or equivalent assembly layer).
+3. **Explicit unconfigured state contract**:
+    - If runtime is not injected, dispatch operations must fail explicitly (not silently degrade).
+    - Runtime metadata APIs should expose unconfigured state clearly for diagnostics/tests.
+4. **Kernel/runtime boundary**:
+    - Do not store host-thread numeric config (`hostThreadCount`, deterministic/work-stealing flags) inside kernel state.
+    - Kernel gets configured runtime component via composition root; runtime config remains internal to runtime layer.
+    - If lane-level diagnostics are needed, expose them via dispatcher/runtime diagnostics interfaces, not kernel config fields.
+5. **Mandatory step gates**:
+    - After each incremental change, run build + full debug tests.
+    - Do not proceed to threaded worker pool implementation until abstraction and error-flow tests are green.
+
 ---
 
 ## Design Patterns
@@ -1256,6 +1374,15 @@ if(NOT CMAKE_CXX_COMPILER)
     endif()
 endif()
 
+# Host-thread runtime configuration (N >= 1)
+option(CONTUR2_ENABLE_HOST_THREADS "Enable real host-thread runtime" OFF)
+set(CONTUR2_NUM_HOST_THREADS "1" CACHE STRING "Number of host worker threads (>=1)")
+option(CONTUR2_DETERMINISTIC_MT "Enable deterministic multithreaded scheduling mode" ON)
+
+if(CONTUR2_ENABLE_HOST_THREADS)
+    find_package(Threads REQUIRED)
+endif()
+
 add_subdirectory(contur)    # contur2_lib static library
 add_subdirectory(demos)
 add_subdirectory(app)
@@ -1284,7 +1411,10 @@ endif()
                 "CMAKE_CXX_COMPILER": "clang++",
                 "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -fsanitize=address,undefined",
                 "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
-                "CONTUR2_ENABLE_TRACING": "ON"
+                "CONTUR2_ENABLE_TRACING": "ON",
+                "CONTUR2_ENABLE_HOST_THREADS": "ON",
+                "CONTUR2_NUM_HOST_THREADS": "4",
+                "CONTUR2_DETERMINISTIC_MT": "ON"
             }
         },
         {
@@ -1295,7 +1425,10 @@ endif()
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic"
+                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic",
+                "CONTUR2_ENABLE_HOST_THREADS": "ON",
+                "CONTUR2_NUM_HOST_THREADS": "4",
+                "CONTUR2_DETERMINISTIC_MT": "OFF"
             }
         },
         {
@@ -1307,19 +1440,43 @@ endif()
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_CXX_COMPILER": "g++",
                 "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -fsanitize=address,undefined",
-                "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"
+                "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
+                "CONTUR2_ENABLE_HOST_THREADS": "ON",
+                "CONTUR2_NUM_HOST_THREADS": "4",
+                "CONTUR2_DETERMINISTIC_MT": "ON"
+            }
+        },
+        {
+            "name": "debug-tsan",
+            "displayName": "Debug (Clang, TSAN)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/debug-tsan",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -fsanitize=thread",
+                "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=thread",
+                "CONTUR2_ENABLE_HOST_THREADS": "ON",
+                "CONTUR2_NUM_HOST_THREADS": "4",
+                "CONTUR2_DETERMINISTIC_MT": "ON"
             }
         }
     ],
     "buildPresets": [
         { "name": "debug", "configurePreset": "debug" },
         { "name": "release", "configurePreset": "release" },
-        { "name": "gcc-debug", "configurePreset": "gcc-debug" }
+        { "name": "gcc-debug", "configurePreset": "gcc-debug" },
+        { "name": "debug-tsan", "configurePreset": "debug-tsan" }
     ],
     "testPresets": [
         {
             "name": "debug",
             "configurePreset": "debug",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "debug-tsan",
+            "configurePreset": "debug-tsan",
             "output": { "outputOnFailure": true }
         }
     ]
@@ -1346,6 +1503,22 @@ cmake --build --preset release
 # Build with GCC for compatibility check
 cmake --preset gcc-debug -S src
 cmake --build --preset gcc-debug
+
+# Explicit N=1 baseline (host threads enabled, single worker)
+cmake -S src -B src/build/n1 -G Ninja \
+    -DCONTUR2_ENABLE_HOST_THREADS=ON \
+    -DCONTUR2_NUM_HOST_THREADS=1 \
+    -DCONTUR2_DETERMINISTIC_MT=ON
+cmake --build src/build/n1
+
+# N=4 deterministic multithreaded run (debug)
+cmake --preset debug -S src -DCONTUR2_NUM_HOST_THREADS=4 -DCONTUR2_DETERMINISTIC_MT=ON
+cmake --build --preset debug
+
+# Data-race lane
+cmake --preset debug-tsan -S src
+cmake --build --preset debug-tsan
+ctest --preset debug-tsan
 ```
 
 ### Build Script
@@ -1476,11 +1649,20 @@ class IScheduler
 - Test CPU decode/execute with known instruction sequences
 - Test MMU address translation and swap operations
 - Test priority calculations and dynamic adjustments
+- Add contention-focused tests for scheduler queues, dispatcher handoff, and synchronization primitives in N>1 mode
+- Add deterministic-mode golden tests: identical input should yield identical trace/order output
 
 ### Integration Tests
 - `test_dispatcher_flow.cpp` — full process lifecycle through Dispatcher
 - `test_interpreter_execution.cpp` — load a program into memory, execute via interpreter, verify results
 - `test_kernel_api.cpp` — end-to-end tests through the Kernel public API
+- Add multithreaded runtime tests for N=1/2/4/8 with work stealing enabled
+- Add deadlock suites covering both simulated wait-for cycles and internal lock-order cycles
+
+### Concurrency Validation
+- Add a ThreadSanitizer (TSAN) test lane for N>1 execution paths.
+- Add stress tests for queue contention, device access serialization, IPC contention, and MMU/page-table races.
+- Add bounded-time liveness tests to catch starvation and accidental global lock bottlenecks.
 
 ### Test Framework
 Use **Google Test** (gtest) — widely available, integrates well with CMake's `FetchContent`:
@@ -1513,6 +1695,7 @@ Recommended implementation sequence (bottom-up, each step builds on the previous
 | **Phase 8: IPC & Syscalls** | `ipc/` (Pipe, SharedMemory, MessageQueue) + `syscall/` (SyscallTable) | Inter-process communication, system call dispatch |
 | **Phase 9: File System** | `fs/` (IFileSystem, SimpleFS, Inode, BlockAllocator) | Inode-based FS simulation |
 | **Phase 10: Kernel** | `kernel/` (IKernel, Kernel, KernelBuilder) | Top-level API, DI wiring |
+| **Phase 10.5: Host Multithreading Runtime** | `dispatch/`, `scheduling/`, `sync/`, `kernel/` | Real host-thread runtime for N>=1, per-core queues + work stealing, deterministic mode, dual deadlock analysis |
 | **Phase 11: Tracing** | `tracing/` (ITracer, Tracer, NullTracer, TraceScope, sinks) | Hierarchical call tracing, compile-time toggle |
 | **Phase 12: TUI** | `tui/` (IRenderer, Dashboard, ProcessView, MemoryMapView, SchedulerView) | Terminal visualization |
 | **Phase 13: Demos** | `demos/` (Stepper, all demo functions) + `app/main.cpp` | Interactive CLI; step-by-step in Debug, continuous in Release |
@@ -1538,6 +1721,7 @@ Recommended implementation sequence (bottom-up, each step builds on the previous
 - [ ] System calls interface (`syscall/`)
 - [ ] File system simulation (`fs/`)
 - [ ] Kernel API and builder (`kernel/`)
+- [ ] Real host multithreading runtime (`dispatch/`, `scheduling/`, `sync/`, `kernel/`) with N>=1 support
 - [ ] Tracing subsystem (`tracing/`)
 - [ ] Terminal UI / Visualization (`tui/`)
 - [ ] Step-by-step demo mode (`demos/stepper.h`)

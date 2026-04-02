@@ -304,11 +304,92 @@
 
 ---
 
+## Phase 10.5: Host Multithreading Runtime (`dispatch/` + `scheduling/` + `sync/` + `kernel/`)
+
+**Goal**: Introduce real host-thread parallelism with configurable `N >= 1` while preserving the N=1 baseline path and
+preventing architecture drift/spaghetti.
+
+**Dependencies**: Phase 6, Phase 7, Phase 8, Phase 10
+
+### Implementation Blueprint (from-scratch rollout)
+
+This blueprint defines the exact implementation path for host multithreading from scratch.
+Follow steps in order; do not skip test gates.
+
+#### Hard Constraints (from architectural review)
+
+- No exception-based control flow in production runtime paths (`throw` is forbidden in scheduler/dispatcher/kernel flow).
+- Dependency inversion must be preserved: runtime strategy is injected from composition root, never implicitly created inside
+	`MPDispatcher`.
+- Missing runtime/policy/dependency must surface as explicit `Result<...>::error(ErrorCode::InvalidState)`.
+- Kernel must stay runtime-agnostic: no host-thread numeric knobs in `KernelDependencies` or `KernelSnapshot`.
+- `threading_config` belongs to runtime/dispatcher components and is consumed internally there.
+- Deterministic mode support for `N > 1` is mandatory.
+- Deadlock model must cover both simulated resource graph and internal lock-order graph.
+
+#### File-by-file Implementation Sequence
+
+| Step | Files | What to add/fix | Test gate |
+|---|---|---|---|
+| I1 | `src/include/contur/dispatch/threading_config.h` | Implement `HostThreadingConfig` as runtime-owned config (`hostThreadCount`, `deterministicMode`, `workStealingEnabled`) with normalization helpers (`isValid()`, `isSingleThreaded()`). | Runtime-config unit checks via dispatcher/runtime tests |
+| I2 | `src/include/contur/dispatch/i_dispatch_runtime.h`, `src/include/contur/dispatch/serial_dispatch_runtime.h`, `src/contur/dispatch/serial_dispatch_runtime.cpp` | Implement lane runtime strategy abstraction and serial baseline runtime (pluggable only, no hidden fallback usage). | `test_mp_dispatcher.cpp` (fake runtime + serial runtime behavior) |
+| I3 | `src/include/contur/dispatch/mp_dispatcher.h`, `src/contur/dispatch/mp_dispatcher.cpp` | Keep runtime injection explicit. Single-arg ctor leaves runtime unconfigured; `dispatch()` returns `InvalidState` when runtime is absent; `tick()` is no-op without runtime; no implicit `SerialDispatchRuntime` fallback. | `MPDispatcherTest.UnconfiguredRuntimePropagatesInvalidState`, custom-runtime tests |
+| I4 | `src/include/contur/kernel/kernel_builder.h`, `src/contur/kernel/kernel_builder.cpp` | Composition-root wiring only: inject runtime component/factory into dispatcher assembly. Do not persist runtime numeric config inside `Kernel` state. | `test_kernel_builder.cpp` wiring tests + `test_kernel_api.cpp` error propagation checks |
+| I5 | `src/include/contur/kernel/i_kernel.h`, `src/contur/kernel/kernel.cpp` | Keep snapshot focused on kernel state and scheduler/dispatcher views; do not add host-thread numeric config fields into kernel snapshot. | Snapshot compatibility assertions |
+| I6 | `src/contur/scheduling/scheduler.cpp` (+ existing scheduler tests) | Ensure null policy never throws; `selectNext()` returns `InvalidState`; `policyName()` reports unconfigured state. | `SchedulerTest.NullPolicyReturnsInvalidStateInsteadOfThrow` |
+| I7 | `src/include/contur/dispatch/dispatcher_pool.h`, `src/contur/dispatch/dispatcher_pool.cpp` | Implement real worker pool consuming runtime-owned `threading_config`; preserve deterministic and ownership-transfer invariants. | `test_dispatcher_pool.cpp`, contention/liveness tests |
+
+#### Foundational Test Gate (before parallel runtime expansion)
+
+| Test file | Required cases |
+|---|---|
+| `src/tests/unit/test_kernel_builder.cpp` | defaults; composition wiring for injected runtime/dispatcher; kernel snapshot remains runtime-agnostic |
+| `src/tests/unit/test_mp_dispatcher.cpp` | empty lanes -> `InvalidState`; unconfigured runtime -> `InvalidState`; explicit serial runtime dispatch/tick; custom runtime metadata and call counts |
+| `src/tests/unit/test_scheduler.cpp` | null policy path is Result-based (`InvalidState`), no exceptions |
+| `src/tests/integration/test_kernel_api.cpp` | runtime/dispatcher `InvalidState` bubbles up through kernel API without exception flow |
+
+#### Execution Rule For Next Iterations
+
+- Implement exactly one step (I1..I7) per iteration.
+- Run build + tests after every step (`Build contur2 (Debug)` then `Run Tests (Debug)`).
+- Proceed to advanced threaded runtime expansion only after all I-step gates are green.
+
+### Tasks
+
+| # | Task | Header | Source | Test | Done |
+|---|---|---|---|---|---|
+| 10.5.1 | `threading_config.h` — `HostThreadingConfig` as runtime-owned config (`hostThreadCount`, `deterministicMode`, `workStealing`) | `dispatch/threading_config.h` | — | — | ✅ |
+| 10.5.2 | Runtime strategy abstraction: `i_dispatch_runtime.h` + serial baseline implementation | `dispatch/i_dispatch_runtime.h`, `dispatch/serial_dispatch_runtime.h` | `dispatch/serial_dispatch_runtime.cpp` | `test_mp_dispatcher.cpp` | ✅ |
+| 10.5.3 | `dispatcher_pool.h` — `DispatcherPool` (PIMPL; owns N workers and N dispatcher lanes; consumes runtime config internally) | `dispatch/dispatcher_pool.h` | `dispatch/dispatcher_pool.cpp` | `test_dispatcher_pool.cpp` | ✅ |
+| 10.5.4 | Refactor `mp_dispatcher.h` integration: runtime injection only, explicit unconfigured-runtime behavior, no hidden concrete fallback | `dispatch/mp_dispatcher.h` (update) | `dispatch/mp_dispatcher.cpp` (update) | `test_mp_dispatcher.cpp` | ✅ |
+| 10.5.5 | Update `kernel_builder.h/cpp` composition root to wire runtime/dispatcher components (not raw thread-count fields in kernel) | `kernel/kernel_builder.h` (update) | `kernel/kernel_builder.cpp` (update) | `test_kernel_builder.cpp`, `test_kernel_api.cpp` | ✅ |
+| 10.5.6 | Scheduler concurrency model: per-core ready queues + work stealing + ownership handoff invariants | `scheduling/i_scheduler.h` (update), `scheduling/scheduler.h` (update) | `scheduling/scheduler.cpp` (update) | `test_scheduler_concurrent.cpp` | ✅ |
+| 10.5.7 | Policy contract hardening: policies consume snapshots only (no lock ownership, no shared-state mutation) | `scheduling/i_scheduling_policy.h` (update) | policy `*.cpp` audit | `test_policy_contracts.cpp` | ✅ |
+| 10.5.8 | Synchronization split: kernel-internal locks vs simulated `ISyncPrimitive` resources | `sync/i_sync_primitive.h` (update docs), `sync/*.h` audit | `sync/*.cpp` updates | `test_sync_layers.cpp` | ✅ |
+| 10.5.9 | Priority inversion controls for simulated mutex/semaphore (priority inheritance/boost rules) | `sync/mutex.h` (update), `sync/semaphore.h` (update) | `sync/mutex.cpp`, `sync/semaphore.cpp` | `test_priority_inversion.cpp` | ✅ |
+| 10.5.10 | Shared resource arbitration: MMU/page-table critical sections + per-device serialization + IPC channel guards | `memory/*.h` (targeted updates), `io/*.h`, `ipc/*.h` | `memory/*.cpp`, `io/*.cpp`, `ipc/*.cpp` | `test_resource_contention.cpp` | ✅ |
+| 10.5.11 | Deadlock detector v2: simulated wait-for graph (thread-aware) + internal lock-order graph | `sync/deadlock_detector.h` (update) | `sync/deadlock_detector.cpp` (update) | `test_deadlock_detector_concurrent.cpp` | ✅ |
+| 10.5.12 | Deterministic N>1 mode: epoch/barrier checkpoints + stable tie-break ordering for replayability | `dispatch/dispatcher_pool.h` (update), `core/clock.h` (if needed) | `dispatch/dispatcher_pool.cpp` | `test_deterministic_multithread.cpp` | ✅ |
+| 10.5.13 | Thread-aware tracing metadata (worker id, sequence, epoch) for reproducible diagnostics | `tracing/trace_event.h` (update) | `tracing/*.cpp` updates | `test_tracer_concurrent.cpp` | ✅ |
+
+### Acceptance Criteria
+- Dispatcher/runtime layer supports configurable `N >= 1` host threads from a single code path.
+- Kernel remains composition-focused and runtime-agnostic (no embedded thread-count config fields).
+- N=1 behavior remains equivalent to current baseline (no functional regressions).
+- N>1 executes processes in parallel with per-core queues and work stealing.
+- Scheduling policies remain pure strategy objects (no direct synchronization side effects).
+- Shared resources (memory/devices/IPC) are protected against races without global-lock bottlenecks.
+- Deadlock detection reports both simulated resource cycles and internal lock-order cycles.
+- Deterministic mode reproduces scheduling/trace order for fixed seed/configuration.
+- Concurrency tests pass under ThreadSanitizer in debug threading mode.
+
+---
+
 ## Phase 11: Tracing (`tracing/`)
 
 **Goal**: Implement the compile-time-toggled tracing subsystem (Observer pattern, zero-cost in Release).
 
-**Dependencies**: Phase 1 (IClock, Event), Phase 10 (Kernel for integration)
+**Dependencies**: Phase 1 (IClock, Event), Phase 10 (Kernel for integration), Phase 10.5 (concurrent runtime metadata)
 
 ### Tasks
 
@@ -360,7 +441,7 @@
 
 **Goal**: Interactive console menu with demo programs for each subsystem. Step-by-step in Debug, continuous in Release.
 
-**Dependencies**: Phases 10–12
+**Dependencies**: Phases 10, 10.5, 11, 12
 
 ### Tasks
 
@@ -394,7 +475,7 @@
 
 **Goal**: Manage real OS child processes under the simulator's scheduler via platform APIs.
 
-**Dependencies**: Phase 5 (IExecutionEngine interface), Phase 10 (Kernel)
+**Dependencies**: Phase 5 (IExecutionEngine interface), Phase 10 (Kernel), Phase 10.5 (host runtime topology)
 
 ### Tasks
 
@@ -430,11 +511,18 @@
 | 15.5 | `test_ipc_flow.cpp` — producer/consumer through pipes + message queues | `tests/integration/test_ipc_flow.cpp` | |
 | 15.6 | `test_filesystem_io.cpp` — file create/read/write/delete through syscalls | `tests/integration/test_filesystem_io.cpp` | |
 | 15.7 | Coverage report: target 80%+ line coverage | — | |
+| 15.8 | `test_scheduler_concurrent.cpp` — per-core queue correctness + work stealing behavior under load | `tests/unit/test_scheduler_concurrent.cpp` | |
+| 15.9 | `test_deadlock_detector_concurrent.cpp` — thread-aware wait-for cycles + internal lock-order cycle detection | `tests/unit/test_deadlock_detector_concurrent.cpp` | |
+| 15.10 | `test_deterministic_multithread.cpp` — identical seed/config produces identical scheduling/trace order in N>1 mode | `tests/integration/test_deterministic_multithread.cpp` | |
+| 15.11 | Stress suite: high-contention memory/device/IPC scenarios with bounded-time liveness checks | `tests/integration/test_contention_stress.cpp` | |
+| 15.12 | ThreadSanitizer lane (`debug-tsan`) for race detection on multithreaded paths | build/test preset update | |
 
 ### Acceptance Criteria
 - `ctest --preset debug` passes all tests with zero failures
 - No ASan/UBSan violations
 - Coverage ≥ 80% for `contur/` + `include/contur/` code
+- `ctest --preset debug-tsan` passes for multithreaded test subsets with zero data-race reports
+- N=1 and N>1 deterministic-mode suites are reproducible for fixed seeds/configs
 
 ---
 
@@ -453,11 +541,16 @@
 | 16.3 | GitHub Actions workflow: matrix (Clang + GCC) × (Debug + Release), test, sanitizers | [ ] |
 | 16.4 | Coverage step in CI (lcov/gcov or llvm-cov) | [ ] |
 | 16.5 | README.md for src/ with build instructions and demo screenshots | [ ] |
+| 16.6 | Document multithreading runtime architecture (N>=1, per-core queues, work stealing, deterministic mode) | [ ] |
+| 16.7 | Add CI matrix axis for host-thread counts (at least N=1 and N=4) + TSAN job | [ ] |
+| 16.8 | Document lock hierarchy, shared-resource arbitration rules, and deadlock analysis model (simulated + internal) | [ ] |
 
 ### Acceptance Criteria
 - `cmake --build --preset debug --target docs` generates HTML API docs
 - CI pipeline passes on push/PR for both compilers
 - README accurately describes how to build and run
+- CI validates both baseline (N=1) and multithreaded (N>1) modes
+- CI includes TSAN validation for the concurrent runtime path
 
 ---
 
@@ -521,6 +614,7 @@ Phase 7:  Dispatch + Sync          ███████████████
 Phase 8:  IPC + Syscalls           ████████████         ✅  (8 tasks,  33 tests)
 Phase 9:  File System              ████████████         ✅  (6 tasks,  14 tests)
 Phase 10: Kernel                   ████████
+Phase 10.5: Host MT Runtime        ████████████
 Phase 11: Tracing                  ████████
 Phase 12: TUI                      ████████████
 Phase 13: Demos + CLI              ████████████████
