@@ -802,9 +802,10 @@ When implementing multithreading incrementally, enforce these non-negotiable rul
 2. **Strict dependency inversion**:
     - `MPDispatcher` must not instantiate concrete runtime fallbacks internally.
     - Runtime strategies are wired only in composition root (`KernelBuilder` or equivalent assembly layer).
-3. **Explicit unconfigured state contract**:
-    - If runtime is not injected, dispatch operations must fail explicitly (not silently degrade).
-    - Runtime metadata APIs should expose unconfigured state clearly for diagnostics/tests.
+3. **Mandatory runtime injection contract**:
+    - `MPDispatcher` requires an injected runtime at construction time (strict DI).
+    - Missing runtime is a composition-root wiring error, not a runtime-mode state.
+    - Do not add nullable/unconfigured runtime paths to dispatcher public behavior.
 4. **Kernel/runtime boundary**:
     - Do not store host-thread numeric config (`hostThreadCount`, deterministic/work-stealing flags) inside kernel state.
     - Kernel gets configured runtime component via composition root; runtime config remains internal to runtime layer.

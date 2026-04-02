@@ -20,6 +20,23 @@
                 "CMAKE_BUILD_TYPE": "Release"
             }
         },
+        {
+            "name": "tsan",
+            "displayName": "TSAN (Clang)",
+            "inherits": "base-debug",
+            "binaryDir": "${sourceDir}/build/tsan",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -fsanitize=thread",
+                "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=thread"
+            },
+            "condition": {
+                "type": "notEquals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
 
         {
             "name": "debug",
@@ -121,6 +138,7 @@
     "buildPresets": [
         { "name": "debug", "configurePreset": "debug" },
         { "name": "release", "configurePreset": "release" },
+        { "name": "tsan", "configurePreset": "tsan" },
         { "name": "gcc-debug", "configurePreset": "gcc-debug" },
         { "name": "gcc-release", "configurePreset": "gcc-release" },
         { "name": "win-debug", "configurePreset": "win-debug" },
@@ -136,6 +154,11 @@
         {
             "name": "release",
             "configurePreset": "release",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "tsan",
+            "configurePreset": "tsan",
             "output": { "outputOnFailure": true }
         },
         {

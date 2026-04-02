@@ -4,6 +4,8 @@
 > Each phase lists concrete tasks, files to create, acceptance criteria, and dependencies.
 > Refer to `contur2.instructions.md` for architecture, interfaces, and code style rules.
 
+**Status legend:** ✅ complete · 🔄 partially complete (implementation present but requirements not fully met)
+
 ---
 
 ## Phase 0: Project Scaffolding
@@ -321,7 +323,8 @@ Follow steps in order; do not skip test gates.
 - No exception-based control flow in production runtime paths (`throw` is forbidden in scheduler/dispatcher/kernel flow).
 - Dependency inversion must be preserved: runtime strategy is injected from composition root, never implicitly created inside
 	`MPDispatcher`.
-- Missing runtime/policy/dependency must surface as explicit `Result<...>::error(ErrorCode::InvalidState)`.
+- Missing policy/dependency must surface as explicit `Result<...>::error(ErrorCode::InvalidState)`.
+- Runtime injection into `MPDispatcher` is mandatory; absence of runtime is a composition wiring error.
 - Kernel must stay runtime-agnostic: no host-thread numeric knobs in `KernelDependencies` or `KernelSnapshot`.
 - `threading_config` belongs to runtime/dispatcher components and is consumed internally there.
 - Deterministic mode support for `N > 1` is mandatory.
@@ -333,7 +336,7 @@ Follow steps in order; do not skip test gates.
 |---|---|---|---|
 | I1 | `src/include/contur/dispatch/threading_config.h` | Implement `HostThreadingConfig` as runtime-owned config (`hostThreadCount`, `deterministicMode`, `workStealingEnabled`) with normalization helpers (`isValid()`, `isSingleThreaded()`). | Runtime-config unit checks via dispatcher/runtime tests |
 | I2 | `src/include/contur/dispatch/i_dispatch_runtime.h`, `src/include/contur/dispatch/serial_dispatch_runtime.h`, `src/contur/dispatch/serial_dispatch_runtime.cpp` | Implement lane runtime strategy abstraction and serial baseline runtime (pluggable only, no hidden fallback usage). | `test_mp_dispatcher.cpp` (fake runtime + serial runtime behavior) |
-| I3 | `src/include/contur/dispatch/mp_dispatcher.h`, `src/contur/dispatch/mp_dispatcher.cpp` | Keep runtime injection explicit. Single-arg ctor leaves runtime unconfigured; `dispatch()` returns `InvalidState` when runtime is absent; `tick()` is no-op without runtime; no implicit `SerialDispatchRuntime` fallback. | `MPDispatcherTest.UnconfiguredRuntimePropagatesInvalidState`, custom-runtime tests |
+| I3 | `src/include/contur/dispatch/mp_dispatcher.h`, `src/contur/dispatch/mp_dispatcher.cpp` | Keep runtime injection explicit and mandatory. `MPDispatcher` is constructed only with injected runtime; no unconfigured-runtime mode and no implicit `SerialDispatchRuntime` fallback. | `MPDispatcherTest.EmptyLanesPropagateInvalidStateWithConfiguredRuntime`, custom-runtime tests |
 | I4 | `src/include/contur/kernel/kernel_builder.h`, `src/contur/kernel/kernel_builder.cpp` | Composition-root wiring only: inject runtime component/factory into dispatcher assembly. Do not persist runtime numeric config inside `Kernel` state. | `test_kernel_builder.cpp` wiring tests + `test_kernel_api.cpp` error propagation checks |
 | I5 | `src/include/contur/kernel/i_kernel.h`, `src/contur/kernel/kernel.cpp` | Keep snapshot focused on kernel state and scheduler/dispatcher views; do not add host-thread numeric config fields into kernel snapshot. | Snapshot compatibility assertions |
 | I6 | `src/contur/scheduling/scheduler.cpp` (+ existing scheduler tests) | Ensure null policy never throws; `selectNext()` returns `InvalidState`; `policyName()` reports unconfigured state. | `SchedulerTest.NullPolicyReturnsInvalidStateInsteadOfThrow` |
@@ -344,7 +347,7 @@ Follow steps in order; do not skip test gates.
 | Test file | Required cases |
 |---|---|
 | `src/tests/unit/test_kernel_builder.cpp` | defaults; composition wiring for injected runtime/dispatcher; kernel snapshot remains runtime-agnostic |
-| `src/tests/unit/test_mp_dispatcher.cpp` | empty lanes -> `InvalidState`; unconfigured runtime -> `InvalidState`; explicit serial runtime dispatch/tick; custom runtime metadata and call counts |
+| `src/tests/unit/test_mp_dispatcher.cpp` | empty lanes -> `InvalidState` (configured runtime); explicit serial runtime dispatch/tick; custom runtime metadata and call counts |
 | `src/tests/unit/test_scheduler.cpp` | null policy path is Result-based (`InvalidState`), no exceptions |
 | `src/tests/integration/test_kernel_api.cpp` | runtime/dispatcher `InvalidState` bubbles up through kernel API without exception flow |
 
@@ -361,7 +364,7 @@ Follow steps in order; do not skip test gates.
 | 10.5.1 | `threading_config.h` — `HostThreadingConfig` as runtime-owned config (`hostThreadCount`, `deterministicMode`, `workStealing`) | `dispatch/threading_config.h` | — | — | ✅ |
 | 10.5.2 | Runtime strategy abstraction: `i_dispatch_runtime.h` + serial baseline implementation | `dispatch/i_dispatch_runtime.h`, `dispatch/serial_dispatch_runtime.h` | `dispatch/serial_dispatch_runtime.cpp` | `test_mp_dispatcher.cpp` | ✅ |
 | 10.5.3 | `dispatcher_pool.h` — `DispatcherPool` (PIMPL; owns N workers and N dispatcher lanes; consumes runtime config internally) | `dispatch/dispatcher_pool.h` | `dispatch/dispatcher_pool.cpp` | `test_dispatcher_pool.cpp` | ✅ |
-| 10.5.4 | Refactor `mp_dispatcher.h` integration: runtime injection only, explicit unconfigured-runtime behavior, no hidden concrete fallback | `dispatch/mp_dispatcher.h` (update) | `dispatch/mp_dispatcher.cpp` (update) | `test_mp_dispatcher.cpp` | ✅ |
+| 10.5.4 | Refactor `mp_dispatcher.h` integration: runtime injection mandatory via DI, no hidden concrete fallback | `dispatch/mp_dispatcher.h` (update) | `dispatch/mp_dispatcher.cpp` (update) | `test_mp_dispatcher.cpp` | ✅ |
 | 10.5.5 | Update `kernel_builder.h/cpp` composition root to wire runtime/dispatcher components (not raw thread-count fields in kernel) | `kernel/kernel_builder.h` (update) | `kernel/kernel_builder.cpp` (update) | `test_kernel_builder.cpp`, `test_kernel_api.cpp` | ✅ |
 | 10.5.6 | Scheduler concurrency model: per-core ready queues + work stealing + ownership handoff invariants | `scheduling/i_scheduler.h` (update), `scheduling/scheduler.h` (update) | `scheduling/scheduler.cpp` (update) | `test_scheduler_concurrent.cpp` | ✅ |
 | 10.5.7 | Policy contract hardening: policies consume snapshots only (no lock ownership, no shared-state mutation) | `scheduling/i_scheduling_policy.h` (update) | policy `*.cpp` audit | `test_policy_contracts.cpp` | ✅ |
