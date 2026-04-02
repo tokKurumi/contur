@@ -4,6 +4,7 @@
 #include "contur/ipc/shared_memory.h"
 
 #include <algorithm>
+#include <mutex>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -16,6 +17,7 @@ namespace contur {
         bool open = true;
         std::vector<std::byte> region;
         std::unordered_set<ProcessId> attached;
+        mutable std::mutex mutex;
     };
 
     SharedMemory::SharedMemory(std::string name, std::size_t bytes)
@@ -31,6 +33,7 @@ namespace contur {
 
     Result<std::size_t> SharedMemory::write(std::span<const std::byte> data)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (!impl_->open)
         {
             return Result<std::size_t>::error(ErrorCode::InvalidState);
@@ -47,6 +50,7 @@ namespace contur {
 
     Result<std::size_t> SharedMemory::read(std::span<std::byte> buffer)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (!impl_->open)
         {
             return Result<std::size_t>::error(ErrorCode::InvalidState);
@@ -63,6 +67,7 @@ namespace contur {
 
     void SharedMemory::close()
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         impl_->open = false;
         std::fill(impl_->region.begin(), impl_->region.end(), std::byte{0});
         impl_->attached.clear();
@@ -70,16 +75,19 @@ namespace contur {
 
     bool SharedMemory::isOpen() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->open;
     }
 
     std::string_view SharedMemory::name() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->name;
     }
 
     Result<void> SharedMemory::attach(ProcessId pid)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (!impl_->open)
         {
             return Result<void>::error(ErrorCode::InvalidState);
@@ -95,6 +103,7 @@ namespace contur {
 
     Result<void> SharedMemory::detach(ProcessId pid)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (pid == INVALID_PID)
         {
             return Result<void>::error(ErrorCode::InvalidPid);
@@ -111,16 +120,19 @@ namespace contur {
 
     bool SharedMemory::isAttached(ProcessId pid) const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->attached.find(pid) != impl_->attached.end();
     }
 
     std::size_t SharedMemory::attachedCount() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->attached.size();
     }
 
     std::size_t SharedMemory::size() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->region.size();
     }
 

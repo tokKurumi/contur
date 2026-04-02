@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <deque>
+#include <mutex>
 #include <utility>
 
 namespace contur {
@@ -15,6 +16,7 @@ namespace contur {
         std::size_t capacity = 0;
         bool open = true;
         std::deque<std::byte> buffer;
+        mutable std::mutex mutex;
     };
 
     Pipe::Pipe(std::string name, std::size_t capacity)
@@ -30,6 +32,7 @@ namespace contur {
 
     Result<std::size_t> Pipe::write(std::span<const std::byte> data)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (!impl_->open)
         {
             return Result<std::size_t>::error(ErrorCode::InvalidState);
@@ -56,6 +59,7 @@ namespace contur {
 
     Result<std::size_t> Pipe::read(std::span<std::byte> buffer)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (!impl_->open)
         {
             return Result<std::size_t>::error(ErrorCode::InvalidState);
@@ -81,27 +85,32 @@ namespace contur {
 
     void Pipe::close()
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         impl_->open = false;
         impl_->buffer.clear();
     }
 
     bool Pipe::isOpen() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->open;
     }
 
     std::string_view Pipe::name() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->name;
     }
 
     std::size_t Pipe::capacity() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->capacity;
     }
 
     std::size_t Pipe::size() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->buffer.size();
     }
 

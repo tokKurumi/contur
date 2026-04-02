@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <deque>
+#include <mutex>
 #include <utility>
 
 namespace contur {
@@ -16,6 +17,7 @@ namespace contur {
         bool priorityMode = false;
         bool open = true;
         std::deque<Message> queue;
+        mutable std::mutex mutex;
     };
 
     MessageQueue::MessageQueue(std::string name, std::size_t maxMessages, bool priorityMode)
@@ -60,22 +62,26 @@ namespace contur {
 
     void MessageQueue::close()
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         impl_->open = false;
         impl_->queue.clear();
     }
 
     bool MessageQueue::isOpen() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->open;
     }
 
     std::string_view MessageQueue::name() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->name;
     }
 
     Result<void> MessageQueue::send(const Message &message)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (!impl_->open)
         {
             return Result<void>::error(ErrorCode::InvalidState);
@@ -102,6 +108,7 @@ namespace contur {
 
     Result<Message> MessageQueue::receive()
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (!impl_->open)
         {
             return Result<Message>::error(ErrorCode::InvalidState);
@@ -118,16 +125,19 @@ namespace contur {
 
     std::size_t MessageQueue::size() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->queue.size();
     }
 
     std::size_t MessageQueue::maxMessages() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->maxMessages;
     }
 
     bool MessageQueue::isPriorityMode() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->priorityMode;
     }
 

@@ -3,6 +3,7 @@
 
 #include "contur/memory/mmu.h"
 
+#include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -16,6 +17,7 @@ namespace contur {
     {
         IMemory &memory;
         std::unique_ptr<IPageReplacementPolicy> replacementPolicy;
+        mutable std::mutex mutex;
 
         /// Per-process page tables
         std::unordered_map<ProcessId, PageTable> pageTables;
@@ -93,6 +95,7 @@ namespace contur {
 
     Result<Block> Mmu::read(ProcessId processId, MemoryAddress virtualAddress) const
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         auto it = impl_->pageTables.find(processId);
         if (it == impl_->pageTables.end())
         {
@@ -116,6 +119,7 @@ namespace contur {
 
     Result<void> Mmu::write(ProcessId processId, MemoryAddress virtualAddress, const Block &block)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         auto it = impl_->pageTables.find(processId);
         if (it == impl_->pageTables.end())
         {
@@ -140,6 +144,7 @@ namespace contur {
 
     Result<MemoryAddress> Mmu::allocate(ProcessId processId, std::size_t pageCount)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (pageCount == 0)
         {
             return Result<MemoryAddress>::error(ErrorCode::InvalidAddress);
@@ -210,6 +215,7 @@ namespace contur {
 
     Result<void> Mmu::deallocate(ProcessId processId)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         auto it = impl_->pageTables.find(processId);
         if (it == impl_->pageTables.end())
         {
@@ -245,6 +251,7 @@ namespace contur {
 
     Result<void> Mmu::swapIn(ProcessId processId, MemoryAddress virtualAddress)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         auto tableIt = impl_->pageTables.find(processId);
         if (tableIt == impl_->pageTables.end())
         {
@@ -312,6 +319,7 @@ namespace contur {
 
     Result<void> Mmu::swapOut(ProcessId processId, MemoryAddress virtualAddress)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         auto tableIt = impl_->pageTables.find(processId);
         if (tableIt == impl_->pageTables.end())
         {
@@ -349,11 +357,13 @@ namespace contur {
 
     std::size_t Mmu::totalFrames() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->totalFrameCount;
     }
 
     std::size_t Mmu::freeFrames() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->freeFrames.size();
     }
 

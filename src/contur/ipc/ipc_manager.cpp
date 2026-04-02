@@ -3,6 +3,7 @@
 
 #include "contur/ipc/ipc_manager.h"
 
+#include <mutex>
 #include <unordered_map>
 #include <utility>
 
@@ -15,6 +16,7 @@ namespace contur {
     struct IpcManager::Impl
     {
         std::unordered_map<std::string, std::unique_ptr<IIpcChannel>> channels;
+        mutable std::mutex mutex;
     };
 
     IpcManager::IpcManager()
@@ -32,7 +34,8 @@ namespace contur {
             return Result<void>::error(ErrorCode::InvalidArgument);
         }
 
-        if (exists(name))
+        std::lock_guard<std::mutex> lock(impl_->mutex);
+        if (impl_->channels.find(name) != impl_->channels.end())
         {
             return Result<void>::ok();
         }
@@ -48,7 +51,8 @@ namespace contur {
             return Result<void>::error(ErrorCode::InvalidArgument);
         }
 
-        if (exists(name))
+        std::lock_guard<std::mutex> lock(impl_->mutex);
+        if (impl_->channels.find(name) != impl_->channels.end())
         {
             return Result<void>::ok();
         }
@@ -64,7 +68,8 @@ namespace contur {
             return Result<void>::error(ErrorCode::InvalidArgument);
         }
 
-        if (exists(name))
+        std::lock_guard<std::mutex> lock(impl_->mutex);
+        if (impl_->channels.find(name) != impl_->channels.end())
         {
             return Result<void>::ok();
         }
@@ -75,6 +80,7 @@ namespace contur {
 
     Result<std::reference_wrapper<IIpcChannel>> IpcManager::getChannel(const std::string &name)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         auto it = impl_->channels.find(name);
         if (it == impl_->channels.end())
         {
@@ -86,6 +92,7 @@ namespace contur {
 
     Result<void> IpcManager::destroyChannel(const std::string &name)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         auto erased = impl_->channels.erase(name);
         if (erased == 0)
         {
@@ -97,11 +104,13 @@ namespace contur {
 
     bool IpcManager::exists(const std::string &name) const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->channels.find(name) != impl_->channels.end();
     }
 
     std::size_t IpcManager::channelCount() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->channels.size();
     }
 

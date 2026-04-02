@@ -4,6 +4,7 @@
 #include "contur/memory/page_table.h"
 
 #include <algorithm>
+#include <mutex>
 #include <vector>
 
 namespace contur {
@@ -11,6 +12,7 @@ namespace contur {
     struct PageTable::Impl
     {
         std::vector<PageTableEntry> entries;
+        mutable std::mutex mutex;
 
         explicit Impl(std::size_t pageCount)
             : entries(pageCount)
@@ -27,6 +29,7 @@ namespace contur {
 
     Result<void> PageTable::map(std::size_t virtualPage, FrameId frame)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (virtualPage >= impl_->entries.size())
         {
             return Result<void>::error(ErrorCode::InvalidAddress);
@@ -41,6 +44,7 @@ namespace contur {
 
     Result<void> PageTable::unmap(std::size_t virtualPage)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (virtualPage >= impl_->entries.size())
         {
             return Result<void>::error(ErrorCode::InvalidAddress);
@@ -51,6 +55,7 @@ namespace contur {
 
     Result<FrameId> PageTable::translate(std::size_t virtualPage) const
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (virtualPage >= impl_->entries.size())
         {
             return Result<FrameId>::error(ErrorCode::InvalidAddress);
@@ -65,6 +70,7 @@ namespace contur {
 
     Result<PageTableEntry> PageTable::getEntry(std::size_t virtualPage) const
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (virtualPage >= impl_->entries.size())
         {
             return Result<PageTableEntry>::error(ErrorCode::InvalidAddress);
@@ -74,6 +80,7 @@ namespace contur {
 
     Result<void> PageTable::setReferenced(std::size_t virtualPage, bool value)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (virtualPage >= impl_->entries.size())
         {
             return Result<void>::error(ErrorCode::InvalidAddress);
@@ -84,6 +91,7 @@ namespace contur {
 
     Result<void> PageTable::setDirty(std::size_t virtualPage, bool value)
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         if (virtualPage >= impl_->entries.size())
         {
             return Result<void>::error(ErrorCode::InvalidAddress);
@@ -99,11 +107,13 @@ namespace contur {
 
     std::size_t PageTable::pageCount() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return impl_->entries.size();
     }
 
     std::size_t PageTable::presentCount() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         return static_cast<std::size_t>(std::count_if(
             impl_->entries.begin(), impl_->entries.end(), [](const PageTableEntry &e) { return e.present; }
         ));
@@ -111,6 +121,7 @@ namespace contur {
 
     void PageTable::clear()
     {
+        std::lock_guard<std::mutex> lock(impl_->mutex);
         std::fill(impl_->entries.begin(), impl_->entries.end(), PageTableEntry{});
     }
 
