@@ -43,6 +43,10 @@ namespace contur {
     };
 
     /// @brief Lightweight kernel state snapshot for UI and diagnostics.
+    ///
+    /// This snapshot is intentionally runtime-agnostic: it exposes kernel-facing
+    /// process/memory/scheduler state and does not include host-runtime threading
+    /// configuration such as thread counts or deterministic/work-stealing flags.
     struct KernelSnapshot
     {
         /// @brief Current simulation tick.
@@ -57,8 +61,8 @@ namespace contur {
         /// @brief Number of processes in blocked state.
         std::size_t blockedCount = 0;
 
-        /// @brief PID of the currently running process or INVALID_PID.
-        ProcessId runningPid = INVALID_PID;
+        /// @brief Process IDs currently running across dispatcher/scheduler lanes.
+        std::vector<ProcessId> runningPids;
 
         /// @brief Total number of virtual memory slots.
         std::size_t totalVirtualSlots = 0;

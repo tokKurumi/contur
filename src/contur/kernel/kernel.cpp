@@ -267,6 +267,7 @@ namespace contur {
 
     KernelSnapshot Kernel::snapshot() const
     {
+        // Snapshot intentionally excludes host-runtime threading configuration.
         KernelSnapshot out;
 
         if (impl_->clock)
@@ -283,7 +284,7 @@ namespace contur {
         {
             out.readyCount = impl_->scheduler->getQueueSnapshot().size();
             out.blockedCount = impl_->scheduler->getBlockedSnapshot().size();
-            out.runningPid = impl_->scheduler->runningProcess();
+            out.runningPids = impl_->scheduler->runningProcesses();
         }
 
         if (impl_->virtualMemory)

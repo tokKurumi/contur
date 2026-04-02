@@ -2,7 +2,6 @@
 /// @brief Unit tests for Kernel and KernelBuilder.
 
 #include <memory>
-#include <set>
 #include <span>
 #include <unordered_map>
 #include <vector>
@@ -11,16 +10,42 @@
 
 #include "contur/core/error.h"
 
+#include "contur/core/clock.h"
+
 #include "contur/arch/instruction.h"
+#include "contur/cpu/cpu.h"
+#include "contur/dispatch/dispatcher.h"
 #include "contur/dispatch/i_dispatcher.h"
+#include "contur/execution/interpreter_engine.h"
+#include "contur/fs/simple_fs.h"
+#include "contur/ipc/ipc_manager.h"
 #include "contur/kernel/i_kernel.h"
 #include "contur/kernel/kernel_builder.h"
+#include "contur/memory/fifo_replacement.h"
+#include "contur/memory/mmu.h"
+#include "contur/memory/physical_memory.h"
+#include "contur/memory/virtual_memory.h"
 #include "contur/process/process_image.h"
+#include "contur/scheduling/round_robin_policy.h"
+#include "contur/scheduling/scheduler.h"
 #include "contur/sync/mutex.h"
+#include "contur/syscall/syscall_table.h"
 
 using namespace contur;
 
 namespace {
+
+    template <typename Snapshot> concept HasHostThreadCountField = requires(Snapshot snapshot) {
+        snapshot.hostThreadCount;
+    };
+
+    template <typename Snapshot> concept HasDeterministicModeField = requires(Snapshot snapshot) {
+        snapshot.deterministicMode;
+    };
+
+    template <typename Snapshot> concept HasWorkStealingEnabledField = requires(Snapshot snapshot) {
+        snapshot.workStealingEnabled;
+    };
 
     class FakeDispatcher final : public IDispatcher
     {
@@ -112,6 +137,40 @@ namespace {
         std::size_t lastBudget_ = 0;
     };
 
+    KernelBuilder makeStrictBuilder(
+        std::unique_ptr<IDispatcher> dispatcher = nullptr,
+        std::size_t defaultTickBudget = static_cast<std::size_t>(DEFAULT_TIME_SLICE)
+    )
+    {
+        auto clock = std::make_unique<SimulationClock>();
+        auto memory = std::make_unique<PhysicalMemory>(2048);
+        auto mmu = std::make_unique<Mmu>(*memory, std::make_unique<FifoReplacement>());
+        auto virtualMemory = std::make_unique<VirtualMemory>(*mmu, MAX_PROCESSES);
+        auto cpu = std::make_unique<Cpu>(*memory);
+        auto engine = std::make_unique<InterpreterEngine>(*cpu, *memory);
+        auto scheduler = std::make_unique<Scheduler>(std::make_unique<RoundRobinPolicy>(defaultTickBudget));
+
+        if (!dispatcher)
+        {
+            dispatcher = std::make_unique<Dispatcher>(*scheduler, *engine, *virtualMemory, *clock);
+        }
+
+        KernelBuilder builder;
+        [[maybe_unused]] auto &configured = builder.withClock(std::move(clock))
+                                               .withMemory(std::move(memory))
+                                               .withMmu(std::move(mmu))
+                                               .withVirtualMemory(std::move(virtualMemory))
+                                               .withCpu(std::move(cpu))
+                                               .withExecutionEngine(std::move(engine))
+                                               .withScheduler(std::move(scheduler))
+                                               .withDispatcher(std::move(dispatcher))
+                                               .withFileSystem(std::make_unique<SimpleFS>())
+                                               .withIpcManager(std::make_unique<IpcManager>())
+                                               .withSyscallTable(std::make_unique<SyscallTable>())
+                                               .withDefaultTickBudget(defaultTickBudget);
+        return builder;
+    }
+
     ProcessConfig makeConfig(const char *name = "p")
     {
         ProcessConfig cfg;
@@ -125,9 +184,29 @@ namespace {
 
 } // namespace
 
-TEST(KernelBuilderTest, BuildDefaultKernel)
+TEST(KernelBuilderTest, BuildFailsWhenDependenciesAreMissing)
 {
-    auto kernel = KernelBuilder().build();
+    auto buildResult = KernelBuilder().build();
+
+    ASSERT_TRUE(buildResult.isError());
+    EXPECT_EQ(buildResult.errorCode(), ErrorCode::InvalidState);
+}
+
+TEST(KernelBuilderTest, SnapshotContractRemainsRuntimeAgnostic)
+{
+    static_assert(!HasHostThreadCountField<KernelSnapshot>);
+    static_assert(!HasDeterministicModeField<KernelSnapshot>);
+    static_assert(!HasWorkStealingEnabledField<KernelSnapshot>);
+
+    SUCCEED();
+}
+
+TEST(KernelBuilderTest, BuildKernelWithExplicitDependencies)
+{
+    auto buildResult = makeStrictBuilder().build();
+
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
 
     ASSERT_NE(kernel, nullptr);
     EXPECT_EQ(kernel->processCount(), 0u);
@@ -135,12 +214,14 @@ TEST(KernelBuilderTest, BuildDefaultKernel)
 
     KernelSnapshot s = kernel->snapshot();
     EXPECT_EQ(s.processCount, 0u);
-    EXPECT_EQ(s.runningPid, INVALID_PID);
+    EXPECT_TRUE(s.runningPids.empty());
 }
 
 TEST(KernelBuilderTest, CreateProcessAutoAssignsPid)
 {
-    auto kernel = KernelBuilder().build();
+    auto buildResult = makeStrictBuilder().build();
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
 
     auto p1 = kernel->createProcess(makeConfig("p1"));
     auto p2 = kernel->createProcess(makeConfig("p2"));
@@ -156,7 +237,10 @@ TEST(KernelBuilderTest, CreateProcessAutoAssignsPid)
 
 TEST(KernelBuilderTest, CreateProcessRejectsEmptyProgram)
 {
-    auto kernel = KernelBuilder().build();
+    auto buildResult = makeStrictBuilder().build();
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
+
     ProcessConfig cfg;
     cfg.name = "bad";
 
@@ -171,7 +255,9 @@ TEST(KernelBuilderTest, TickUsesDefaultBudgetWhenZero)
     auto fakeDispatcher = std::make_unique<FakeDispatcher>();
     FakeDispatcher *dispatcherRaw = fakeDispatcher.get();
 
-    auto kernel = KernelBuilder().withDispatcher(std::move(fakeDispatcher)).withDefaultTickBudget(7).build();
+    auto buildResult = makeStrictBuilder(std::move(fakeDispatcher), 7).build();
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
 
     ASSERT_TRUE(kernel->createProcess(makeConfig()).isOk());
 
@@ -182,12 +268,22 @@ TEST(KernelBuilderTest, TickUsesDefaultBudgetWhenZero)
     EXPECT_EQ(dispatcherRaw->lastBudget(), 7u);
 }
 
+TEST(KernelBuilderTest, BuildFailsWhenDefaultTickBudgetIsZero)
+{
+    auto buildResult = makeStrictBuilder(nullptr, 0).build();
+
+    ASSERT_TRUE(buildResult.isError());
+    EXPECT_EQ(buildResult.errorCode(), ErrorCode::InvalidArgument);
+}
+
 TEST(KernelBuilderTest, TerminateProcessDelegatesToDispatcher)
 {
     auto fakeDispatcher = std::make_unique<FakeDispatcher>();
     FakeDispatcher *dispatcherRaw = fakeDispatcher.get();
 
-    auto kernel = KernelBuilder().withDispatcher(std::move(fakeDispatcher)).build();
+    auto buildResult = makeStrictBuilder(std::move(fakeDispatcher)).build();
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
 
     auto pid = kernel->createProcess(makeConfig());
     ASSERT_TRUE(pid.isOk());
@@ -201,7 +297,10 @@ TEST(KernelBuilderTest, TerminateProcessDelegatesToDispatcher)
 
 TEST(KernelBuilderTest, SyscallRoundTripWithCallerContext)
 {
-    auto kernel = KernelBuilder().build();
+    auto buildResult = makeStrictBuilder().build();
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
+
     auto pid = kernel->createProcess(makeConfig("syscaller"));
     ASSERT_TRUE(pid.isOk());
 
@@ -225,7 +324,9 @@ TEST(KernelBuilderTest, RunForTicksStopsGracefullyWhenNoProcesses)
     auto fakeDispatcher = std::make_unique<FakeDispatcher>();
     fakeDispatcher->setDispatchResult(Result<void>::error(ErrorCode::NotFound));
 
-    auto kernel = KernelBuilder().withDispatcher(std::move(fakeDispatcher)).build();
+    auto buildResult = makeStrictBuilder(std::move(fakeDispatcher)).build();
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
 
     auto result = kernel->runForTicks(20, 3);
 
@@ -234,7 +335,10 @@ TEST(KernelBuilderTest, RunForTicksStopsGracefullyWhenNoProcesses)
 
 TEST(KernelBuilderTest, SyncPrimitiveLifecycle)
 {
-    auto kernel = KernelBuilder().build();
+    auto buildResult = makeStrictBuilder().build();
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
+
     auto pid = kernel->createProcess(makeConfig("lock-owner"));
     ASSERT_TRUE(pid.isOk());
 
@@ -249,7 +353,10 @@ TEST(KernelBuilderTest, SyncPrimitiveLifecycle)
 
 TEST(KernelBuilderTest, SnapshotTracksReadyQueueAfterCreate)
 {
-    auto kernel = KernelBuilder().build();
+    auto buildResult = makeStrictBuilder().build();
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
+
     auto pid = kernel->createProcess(makeConfig("snapshot-p"));
     ASSERT_TRUE(pid.isOk());
 
@@ -257,6 +364,6 @@ TEST(KernelBuilderTest, SnapshotTracksReadyQueueAfterCreate)
 
     EXPECT_EQ(s.processCount, 1u);
     EXPECT_EQ(s.readyCount, 1u);
-    EXPECT_EQ(s.runningPid, INVALID_PID);
+    EXPECT_TRUE(s.runningPids.empty());
     EXPECT_GT(s.totalVirtualSlots, 0u);
 }

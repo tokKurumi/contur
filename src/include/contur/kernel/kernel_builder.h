@@ -17,10 +17,8 @@ namespace contur {
     class ICPU;
     class IExecutionEngine;
     class IScheduler;
-    class ISchedulingPolicy;
     class IDispatcher;
     class IFileSystem;
-    class IPageReplacementPolicy;
     class IpcManager;
     class SyscallTable;
     struct KernelDependencies;
@@ -43,17 +41,15 @@ namespace contur {
         [[nodiscard]] KernelBuilder &withVirtualMemory(std::unique_ptr<IVirtualMemory> virtualMemory);
         [[nodiscard]] KernelBuilder &withCpu(std::unique_ptr<ICPU> cpu);
         [[nodiscard]] KernelBuilder &withExecutionEngine(std::unique_ptr<IExecutionEngine> executionEngine);
-        [[nodiscard]] KernelBuilder &withSchedulingPolicy(std::unique_ptr<ISchedulingPolicy> policy);
         [[nodiscard]] KernelBuilder &withScheduler(std::unique_ptr<IScheduler> scheduler);
         [[nodiscard]] KernelBuilder &withDispatcher(std::unique_ptr<IDispatcher> dispatcher);
         [[nodiscard]] KernelBuilder &withFileSystem(std::unique_ptr<IFileSystem> fileSystem);
         [[nodiscard]] KernelBuilder &withIpcManager(std::unique_ptr<IpcManager> ipcManager);
         [[nodiscard]] KernelBuilder &withSyscallTable(std::unique_ptr<SyscallTable> syscallTable);
-        [[nodiscard]] KernelBuilder &withPageReplacementPolicy(std::unique_ptr<IPageReplacementPolicy> replacement);
         [[nodiscard]] KernelBuilder &withDefaultTickBudget(std::size_t ticks);
 
-        /// @brief Builds a fully wired kernel instance.
-        [[nodiscard]] std::unique_ptr<IKernel> build();
+        /// @brief Builds a kernel instance from explicitly injected dependencies.
+        [[nodiscard]] Result<std::unique_ptr<IKernel>> build();
 
         private:
         struct Impl;
