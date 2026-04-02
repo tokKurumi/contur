@@ -1,5 +1,21 @@
 /// @file test_resource_contention.cpp
 /// @brief Contention tests for guarded shared resources.
+///
+/// ### ThreadSanitizer (TSAN) annotations
+/// All tests in this file spawn real `std::thread` workers and are designed to
+/// be run under TSAN (CMake preset `tsan`).  TSAN will flag any data race that
+/// is not serialised by a mutex or an acquire/release atomic pair.
+///
+/// How to run:
+/// @code
+///   cmake --preset tsan
+///   cmake --build --preset tsan
+///   ctest --preset tsan --output-on-failure
+/// @endcode
+///
+/// Expected outcome under TSAN: zero data-race reports.  A race report here
+/// means the corresponding subsystem is missing a lock or an appropriate
+/// memory-order annotation.
 
 #include <array>
 #include <atomic>
@@ -21,6 +37,8 @@
 
 using namespace contur;
 
+// TSAN: PageTable serialises map/translate/unmap with an internal mutex.
+// A race here indicates that mutex is absent or not covering all writers.
 TEST(ResourceContentionTest, PageTableConcurrentMapTranslateUnmapIsStable)
 {
     PageTable table(8);
@@ -62,6 +80,8 @@ TEST(ResourceContentionTest, PageTableConcurrentMapTranslateUnmapIsStable)
     EXPECT_EQ(unexpectedErrors.load(std::memory_order_relaxed), 0u);
 }
 
+// TSAN: MMU read and write paths must both hold the same internal lock.
+// A race here indicates a missing read lock or an unguarded frame/page update.
 TEST(ResourceContentionTest, MmuConcurrentReadWriteIsSerialized)
 {
     PhysicalMemory memory(128);
@@ -113,6 +133,8 @@ TEST(ResourceContentionTest, MmuConcurrentReadWriteIsSerialized)
     EXPECT_EQ(errors.load(std::memory_order_relaxed), 0u);
 }
 
+// TSAN: DeviceManager must protect its device registry and per-device buffers.
+// A race here usually means the per-device queue is accessed without a lock.
 TEST(ResourceContentionTest, DeviceManagerSerializesPerDeviceOperations)
 {
     DeviceManager manager;
@@ -156,6 +178,8 @@ TEST(ResourceContentionTest, DeviceManagerSerializesPerDeviceOperations)
     EXPECT_EQ(reads, writes.load(std::memory_order_relaxed));
 }
 
+// TSAN: IpcManager channel-creation must be idempotent under concurrent callers.
+// A race here indicates the channel-registry map is not mutex-protected.
 TEST(ResourceContentionTest, IpcManagerConcurrentCreateIsIdempotent)
 {
     IpcManager manager;
@@ -190,6 +214,8 @@ TEST(ResourceContentionTest, IpcManagerConcurrentCreateIsIdempotent)
     EXPECT_EQ(failures.load(std::memory_order_relaxed), 0u);
 }
 
+// TSAN: MessageQueue must guard its internal ring/deque with a mutex.
+// A race here means write() or read() leaves the size counter unprotected.
 TEST(ResourceContentionTest, MessageQueueConcurrentSendReceiveUsesChannelGuard)
 {
     MessageQueue queue("q", 4096, false);

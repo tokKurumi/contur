@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <deque>
+#include <mutex>
 #include <optional>
 #include <unordered_map>
 
@@ -22,6 +23,7 @@ namespace contur {
 
     struct Mutex::Impl
     {
+        mutable std::mutex guard;
         std::optional<ProcessId> owner;
         std::size_t recursionDepth = 0;
         std::deque<ProcessId> waitQueue;
@@ -135,6 +137,7 @@ namespace contur {
             return Result<void>::error(ErrorCode::InvalidPid);
         }
 
+        std::lock_guard<std::mutex> lock(impl_->guard);
         impl_->ensurePriorityRegistered(pid);
 
         if (!impl_->owner.has_value())
@@ -161,6 +164,7 @@ namespace contur {
 
     Result<void> Mutex::release(ProcessId pid)
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         if (!impl_->owner.has_value())
         {
             return Result<void>::error(ErrorCode::InvalidState);
@@ -200,6 +204,7 @@ namespace contur {
             return Result<void>::error(ErrorCode::InvalidPid);
         }
 
+        std::lock_guard<std::mutex> lock(impl_->guard);
         impl_->ensurePriorityRegistered(pid);
 
         if (!impl_->owner.has_value())
@@ -232,36 +237,43 @@ namespace contur {
 
     Result<void> Mutex::registerProcessPriority(ProcessId pid, PriorityLevel basePriority)
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->registerPriority(pid, basePriority);
     }
 
     PriorityLevel Mutex::effectivePriority(ProcessId pid) const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->effectivePriority(pid);
     }
 
     PriorityLevel Mutex::basePriority(ProcessId pid) const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->basePriority(pid);
     }
 
     bool Mutex::isLocked() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->owner.has_value();
     }
 
     std::optional<ProcessId> Mutex::owner() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->owner;
     }
 
     std::size_t Mutex::recursionDepth() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->recursionDepth;
     }
 
     std::size_t Mutex::waitingCount() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->waitQueue.size();
     }
 

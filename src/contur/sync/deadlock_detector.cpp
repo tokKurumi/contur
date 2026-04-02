@@ -5,7 +5,9 @@
 
 #include <algorithm>
 #include <functional>
+#include <mutex>
 #include <set>
+#include <shared_mutex>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -14,6 +16,8 @@ namespace contur {
 
     struct DeadlockDetector::Impl
     {
+        mutable std::shared_mutex rwMutex;
+
         struct WaitNode
         {
             ProcessId pid = INVALID_PID;
@@ -249,6 +253,7 @@ namespace contur {
             return;
         }
 
+        std::unique_lock<std::shared_mutex> lock(impl_->rwMutex);
         Impl::WaitNode node{.pid = pid, .threadToken = threadToken};
         impl_->resourceOwners[resource].insert(node);
         impl_->clearOutgoing(node);
@@ -261,6 +266,7 @@ namespace contur {
 
     void DeadlockDetector::onRelease(ProcessId pid, ResourceId resource, ThreadToken threadToken)
     {
+        std::unique_lock<std::shared_mutex> lock(impl_->rwMutex);
         auto ownerIt = impl_->resourceOwners.find(resource);
         if (ownerIt == impl_->resourceOwners.end())
         {
@@ -286,6 +292,7 @@ namespace contur {
             return;
         }
 
+        std::unique_lock<std::shared_mutex> lock(impl_->rwMutex);
         Impl::WaitNode waitingNode{.pid = pid, .threadToken = threadToken};
         impl_->clearOutgoing(waitingNode);
 
@@ -306,11 +313,13 @@ namespace contur {
 
     bool DeadlockDetector::hasDeadlock() const
     {
+        std::shared_lock<std::shared_mutex> lock(impl_->rwMutex);
         return impl_->hasWaitForCycle() || impl_->hasLockOrderCycle();
     }
 
     std::vector<ProcessId> DeadlockDetector::getDeadlockedProcesses() const
     {
+        std::shared_lock<std::shared_mutex> lock(impl_->rwMutex);
         std::set<ProcessId> processSet;
         for (const auto &node : impl_->waitForCycleNodes())
         {
@@ -321,6 +330,7 @@ namespace contur {
 
     void DeadlockDetector::onInternalLockAcquire(ThreadToken threadToken, ResourceId lockId)
     {
+        std::unique_lock<std::shared_mutex> lock(impl_->rwMutex);
         auto &held = impl_->heldInternalLocks[threadToken];
         for (ResourceId heldLock : held)
         {
@@ -334,6 +344,7 @@ namespace contur {
 
     void DeadlockDetector::onInternalLockRelease(ThreadToken threadToken, ResourceId lockId)
     {
+        std::unique_lock<std::shared_mutex> lock(impl_->rwMutex);
         auto heldIt = impl_->heldInternalLocks.find(threadToken);
         if (heldIt == impl_->heldInternalLocks.end())
         {
@@ -355,11 +366,13 @@ namespace contur {
 
     bool DeadlockDetector::hasInternalLockOrderCycle() const
     {
+        std::shared_lock<std::shared_mutex> lock(impl_->rwMutex);
         return impl_->hasLockOrderCycle();
     }
 
     std::vector<ResourceId> DeadlockDetector::getInternalLockOrderCycle() const
     {
+        std::shared_lock<std::shared_mutex> lock(impl_->rwMutex);
         return impl_->lockOrderCycleNodes();
     }
 

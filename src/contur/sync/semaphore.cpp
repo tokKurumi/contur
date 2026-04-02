@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <deque>
+#include <mutex>
 #include <optional>
 #include <unordered_map>
 
@@ -22,6 +23,7 @@ namespace contur {
 
     struct Semaphore::Impl
     {
+        mutable std::mutex guard;
         std::size_t count = 0;
         std::size_t maxCount = 1;
         std::deque<ProcessId> waitQueue;
@@ -145,6 +147,7 @@ namespace contur {
             return Result<void>::error(ErrorCode::InvalidPid);
         }
 
+        std::lock_guard<std::mutex> lock(impl_->guard);
         impl_->ensurePriorityRegistered(pid);
 
         if (impl_->count > 0)
@@ -170,6 +173,7 @@ namespace contur {
             return Result<void>::error(ErrorCode::InvalidPid);
         }
 
+        std::lock_guard<std::mutex> lock(impl_->guard);
         impl_->ensurePriorityRegistered(pid);
         if (auto holder = impl_->holderCounts.find(pid); holder != impl_->holderCounts.end())
         {
@@ -211,6 +215,7 @@ namespace contur {
             return Result<void>::error(ErrorCode::InvalidPid);
         }
 
+        std::lock_guard<std::mutex> lock(impl_->guard);
         impl_->ensurePriorityRegistered(pid);
 
         if (impl_->count == 0)
@@ -236,31 +241,37 @@ namespace contur {
 
     Result<void> Semaphore::registerProcessPriority(ProcessId pid, PriorityLevel basePriority)
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->registerPriority(pid, basePriority);
     }
 
     PriorityLevel Semaphore::effectivePriority(ProcessId pid) const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->effectivePriority(pid);
     }
 
     PriorityLevel Semaphore::basePriority(ProcessId pid) const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->basePriority(pid);
     }
 
     std::size_t Semaphore::count() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->count;
     }
 
     std::size_t Semaphore::maxCount() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->maxCount;
     }
 
     std::size_t Semaphore::waitingCount() const noexcept
     {
+        std::lock_guard<std::mutex> lock(impl_->guard);
         return impl_->waitQueue.size();
     }
 
