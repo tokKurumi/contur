@@ -403,18 +403,24 @@ namespace contur {
         CONTUR_TRACE(impl_->tracer, "Scheduler", "select.request", std::string("lane=") + std::to_string(laneIndex));
 
         auto selected = impl_->selectNextForLane_nolock(laneIndex, clock);
-        if (selected.isOk())
-        {
-            CONTUR_TRACE(
-                impl_->tracer, "Scheduler", "select.ok", std::string("pid=") + std::to_string(selected.value())
-            );
-        }
-        else
-        {
-            CONTUR_TRACE_L(
-                impl_->tracer, TraceLevel::Debug, "Scheduler", "select.error", errorCodeToString(selected.errorCode())
-            );
-        }
+        CONTUR_TRACE_BLOCK(
+            if (selected.isOk())
+            {
+                CONTUR_TRACE(
+                    impl_->tracer, "Scheduler", "select.ok", std::string("pid=") + std::to_string(selected.value())
+                );
+            }
+            else
+            {
+                CONTUR_TRACE_L(
+                    impl_->tracer,
+                    TraceLevel::Debug,
+                    "Scheduler",
+                    "select.error",
+                    errorCodeToString(selected.errorCode())
+                );
+            }
+        );
         return selected;
     }
 
@@ -500,12 +506,18 @@ namespace contur {
         CONTUR_TRACE(impl_->tracer, "Scheduler", "block.request", std::string("pid=") + std::to_string(pid));
 
         auto blocked = impl_->blockProcess_nolock(pid, currentTick);
-        if (blocked.isError())
-        {
-            CONTUR_TRACE_L(
-                impl_->tracer, TraceLevel::Warn, "Scheduler", "block.error", errorCodeToString(blocked.errorCode())
-            );
-        }
+        CONTUR_TRACE_BLOCK(
+            if (blocked.isError())
+            {
+                CONTUR_TRACE_L(
+                    impl_->tracer,
+                    TraceLevel::Warn,
+                    "Scheduler",
+                    "block.error",
+                    errorCodeToString(blocked.errorCode())
+                );
+            }
+        );
         return blocked;
     }
 

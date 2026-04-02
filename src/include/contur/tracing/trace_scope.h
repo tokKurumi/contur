@@ -54,6 +54,11 @@ namespace contur {
 #ifdef CONTUR_TRACE_ENABLED
 #define CONTUR_TRACE_SCOPE(tracer, subsystem, operation) \
     ::contur::TraceScope contur_trace_scope_##__LINE__((tracer), (subsystem), (operation))
+#define CONTUR_TRACE_BLOCK(code)                                                                          \
+    do                                                                                                    \
+    {                                                                                                     \
+        code                                                                                              \
+    } while (0)
 #define CONTUR_TRACE_L(tracer, level, subsystem, operation, details)                                      \
     (tracer).trace(                                                                                       \
         ::contur::makeTraceEvent(                                                                         \
@@ -64,6 +69,7 @@ namespace contur {
     CONTUR_TRACE_L((tracer), ::contur::TraceLevel::Info, (subsystem), (operation), (details))
 #else
 #define CONTUR_TRACE_SCOPE(tracer, subsystem, operation) ((void)0)
+#define CONTUR_TRACE_BLOCK(code) ((void)0)
 #define CONTUR_TRACE_L(tracer, level, subsystem, operation, details) ((void)0)
 #define CONTUR_TRACE(tracer, subsystem, operation, details) ((void)0)
 #endif
