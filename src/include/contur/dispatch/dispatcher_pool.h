@@ -18,6 +18,23 @@ namespace contur {
     /// using runtime-owned HostThreadingConfig. Deterministic mode uses stable
     /// static lane partitioning; non-deterministic mode can use dynamic work
     /// stealing when enabled.
+    ///
+    /// ### Two-level work stealing
+    /// Work stealing operates at two independent, non-conflicting levels:
+    ///
+    ///  1. **Runtime-level stealing** (this class): when `workStealing` is enabled in
+    ///     the HostThreadingConfig, an idle worker thread may pick up a lane that
+    ///     was originally assigned to another worker.  This rebalances *dispatcher
+    ///     lanes* across host threads.
+    ///
+    ///  2. **Scheduler-level stealing** (Scheduler / IScheduler::stealNextForLane):
+    ///     within a single dispatcher lane, the scheduler may pull the oldest-ready
+    ///     process from a neighbouring per-core ready queue.  This rebalances
+    ///     *simulated processes* across lanes inside one dispatcher.
+    ///
+    /// The two levels are orthogonal: runtime stealing moves whole lanes between
+    /// threads, scheduler stealing moves processes between ready queues.  Enabling
+    /// one does not affect the other.
     class DispatcherPool final : public IDispatchRuntime
     {
         public:
