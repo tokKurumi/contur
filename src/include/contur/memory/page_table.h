@@ -28,12 +28,17 @@ namespace contur {
         public:
         /// @brief Constructs a page table with the given number of virtual pages.
         explicit PageTable(std::size_t pageCount);
+
+        /// @brief Destroys page table.
         ~PageTable();
 
         // Non-copyable, movable
         PageTable(const PageTable &) = delete;
         PageTable &operator=(const PageTable &) = delete;
+        /// @brief Move-constructs page table state.
         PageTable(PageTable &&) noexcept;
+
+        /// @brief Move-assigns page table state.
         PageTable &operator=(PageTable &&) noexcept;
 
         /// @brief Maps a virtual page to a physical frame.

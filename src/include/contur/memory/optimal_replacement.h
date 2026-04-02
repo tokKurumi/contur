@@ -22,17 +22,34 @@ namespace contur {
         /// @brief Constructs with a known future access sequence.
         /// @param futureAccesses Ordered list of FrameIds that will be accessed.
         explicit OptimalReplacement(std::vector<FrameId> futureAccesses);
+
+        /// @brief Destroys optimal replacement policy.
         ~OptimalReplacement() override;
 
+        /// @brief Copy construction is disabled.
         OptimalReplacement(const OptimalReplacement &) = delete;
+
+        /// @brief Copy assignment is disabled.
         OptimalReplacement &operator=(const OptimalReplacement &) = delete;
+        /// @brief Move-constructs policy state.
         OptimalReplacement(OptimalReplacement &&) noexcept;
+
+        /// @brief Move-assigns policy state.
         OptimalReplacement &operator=(OptimalReplacement &&) noexcept;
 
+        /// @copydoc IPageReplacementPolicy::name
         [[nodiscard]] std::string_view name() const noexcept override;
+
+        /// @copydoc IPageReplacementPolicy::selectVictim
         [[nodiscard]] FrameId selectVictim(const PageTable &pageTable) override;
+
+        /// @copydoc IPageReplacementPolicy::onAccess
         void onAccess(FrameId frame) override;
+
+        /// @copydoc IPageReplacementPolicy::onLoad
         void onLoad(FrameId frame) override;
+
+        /// @copydoc IPageReplacementPolicy::reset
         void reset() override;
 
         private:

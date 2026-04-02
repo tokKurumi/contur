@@ -28,23 +28,43 @@ namespace contur {
         /// @param memory The physical memory to manage (non-owning reference).
         /// @param replacementPolicy The page replacement policy to use.
         explicit Mmu(IMemory &memory, std::unique_ptr<IPageReplacementPolicy> replacementPolicy);
+
+        /// @brief Destroys MMU and associated paging state.
         ~Mmu() override;
 
         // Non-copyable, movable
         Mmu(const Mmu &) = delete;
         Mmu &operator=(const Mmu &) = delete;
+        /// @brief Move-constructs MMU state.
         Mmu(Mmu &&) noexcept;
+
+        /// @brief Move-assigns MMU state.
         Mmu &operator=(Mmu &&) noexcept;
 
         // IMMU interface
+        /// @copydoc IMMU::read
         [[nodiscard]] Result<Block> read(ProcessId processId, MemoryAddress virtualAddress) const override;
+
+        /// @copydoc IMMU::write
         [[nodiscard]] Result<void>
         write(ProcessId processId, MemoryAddress virtualAddress, const Block &block) override;
+
+        /// @copydoc IMMU::allocate
         [[nodiscard]] Result<MemoryAddress> allocate(ProcessId processId, std::size_t pageCount) override;
+
+        /// @copydoc IMMU::deallocate
         [[nodiscard]] Result<void> deallocate(ProcessId processId) override;
+
+        /// @copydoc IMMU::swapIn
         [[nodiscard]] Result<void> swapIn(ProcessId processId, MemoryAddress virtualAddress) override;
+
+        /// @copydoc IMMU::swapOut
         [[nodiscard]] Result<void> swapOut(ProcessId processId, MemoryAddress virtualAddress) override;
+
+        /// @copydoc IMMU::totalFrames
         [[nodiscard]] std::size_t totalFrames() const noexcept override;
+
+        /// @copydoc IMMU::freeFrames
         [[nodiscard]] std::size_t freeFrames() const noexcept override;
 
         private:

@@ -20,18 +20,30 @@ namespace contur {
         /// @brief Constructs physical memory with the given number of cells.
         /// @param cellCount Total addressable cells (each holds one Block).
         explicit PhysicalMemory(std::size_t cellCount);
+
+        /// @brief Destroys physical memory instance.
         ~PhysicalMemory() override;
 
         // Non-copyable, movable
         PhysicalMemory(const PhysicalMemory &) = delete;
         PhysicalMemory &operator=(const PhysicalMemory &) = delete;
+        /// @brief Move-constructs physical memory state.
         PhysicalMemory(PhysicalMemory &&) noexcept;
+
+        /// @brief Move-assigns physical memory state.
         PhysicalMemory &operator=(PhysicalMemory &&) noexcept;
 
         // IMemory interface
+        /// @copydoc IMemory::read
         [[nodiscard]] Result<Block> read(MemoryAddress address) const override;
+
+        /// @copydoc IMemory::write
         [[nodiscard]] Result<void> write(MemoryAddress address, const Block &block) override;
+
+        /// @copydoc IMemory::size
         [[nodiscard]] std::size_t size() const noexcept override;
+
+        /// @copydoc IMemory::clear
         void clear() override;
 
         /// @brief Writes a contiguous sequence of blocks starting at the given address.

@@ -16,18 +16,36 @@ namespace contur {
     class LruReplacement final : public IPageReplacementPolicy
     {
         public:
+        /// @brief Creates an LRU replacement policy with empty history state.
         LruReplacement();
+
+        /// @brief Destroys LRU replacement policy.
         ~LruReplacement() override;
 
+        /// @brief Copy construction is disabled.
         LruReplacement(const LruReplacement &) = delete;
+
+        /// @brief Copy assignment is disabled.
         LruReplacement &operator=(const LruReplacement &) = delete;
+        /// @brief Move-constructs policy state.
         LruReplacement(LruReplacement &&) noexcept;
+
+        /// @brief Move-assigns policy state.
         LruReplacement &operator=(LruReplacement &&) noexcept;
 
+        /// @copydoc IPageReplacementPolicy::name
         [[nodiscard]] std::string_view name() const noexcept override;
+
+        /// @copydoc IPageReplacementPolicy::selectVictim
         [[nodiscard]] FrameId selectVictim(const PageTable &pageTable) override;
+
+        /// @copydoc IPageReplacementPolicy::onAccess
         void onAccess(FrameId frame) override;
+
+        /// @copydoc IPageReplacementPolicy::onLoad
         void onLoad(FrameId frame) override;
+
+        /// @copydoc IPageReplacementPolicy::reset
         void reset() override;
 
         private:

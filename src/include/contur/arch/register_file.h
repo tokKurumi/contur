@@ -49,7 +49,10 @@ namespace contur {
     class RegisterFile
     {
         public:
+        /// @brief Constructs register file with all registers initialized to zero.
         RegisterFile();
+
+        /// @brief Destroys register file.
         ~RegisterFile();
 
         // Non-copyable
@@ -57,7 +60,10 @@ namespace contur {
         RegisterFile &operator=(const RegisterFile &) = delete;
 
         // Movable
+        /// @brief Move-constructs register file state.
         RegisterFile(RegisterFile &&) noexcept;
+
+        /// @brief Move-assigns register file state.
         RegisterFile &operator=(RegisterFile &&) noexcept;
 
         /// @brief Gets the value of the specified register.
