@@ -14,7 +14,9 @@
 #include "contur/arch/instruction.h"
 #include "contur/cpu/cpu.h"
 #include "contur/dispatch/dispatcher.h"
+#include "contur/dispatch/i_dispatch_runtime.h"
 #include "contur/dispatch/i_dispatcher.h"
+#include "contur/dispatch/mp_dispatcher.h"
 #include "contur/execution/interpreter_engine.h"
 #include "contur/fs/simple_fs.h"
 #include "contur/ipc/ipc_manager.h"
@@ -131,6 +133,94 @@ namespace {
         std::size_t dispatchCalls_ = 0;
         std::size_t terminateCalls_ = 0;
         std::size_t lastBudget_ = 0;
+    };
+
+    class FakeDispatchRuntime final : public IDispatchRuntime
+    {
+        public:
+        explicit FakeDispatchRuntime(HostThreadingConfig config = {})
+            : config_(config.normalized())
+        {}
+
+        [[nodiscard]] std::string_view name() const noexcept override
+        {
+            return "FakeDispatchRuntime";
+        }
+
+        [[nodiscard]] const HostThreadingConfig &config() const noexcept override
+        {
+            return config_;
+        }
+
+        [[nodiscard]] Result<void> dispatch(const DispatcherLanes &lanes, std::size_t tickBudget) override
+        {
+            ++dispatchCalls_;
+            lastLaneCount_ = lanes.size();
+            lastTickBudget_ = tickBudget;
+
+            bool anySuccess = false;
+            ErrorCode firstError = ErrorCode::Ok;
+            for (IDispatcher &lane : lanes)
+            {
+                auto laneResult = lane.dispatch(tickBudget);
+                if (laneResult.isOk())
+                {
+                    anySuccess = true;
+                    continue;
+                }
+
+                if (firstError == ErrorCode::Ok && laneResult.errorCode() != ErrorCode::NotFound)
+                {
+                    firstError = laneResult.errorCode();
+                }
+            }
+
+            if (anySuccess)
+            {
+                return Result<void>::ok();
+            }
+            if (firstError != ErrorCode::Ok)
+            {
+                return Result<void>::error(firstError);
+            }
+            return Result<void>::error(ErrorCode::NotFound);
+        }
+
+        void tick(const DispatcherLanes &lanes) override
+        {
+            ++tickCalls_;
+            for (IDispatcher &lane : lanes)
+            {
+                lane.tick();
+            }
+        }
+
+        [[nodiscard]] std::size_t dispatchCalls() const noexcept
+        {
+            return dispatchCalls_;
+        }
+
+        [[nodiscard]] std::size_t tickCalls() const noexcept
+        {
+            return tickCalls_;
+        }
+
+        [[nodiscard]] std::size_t lastLaneCount() const noexcept
+        {
+            return lastLaneCount_;
+        }
+
+        [[nodiscard]] std::size_t lastTickBudget() const noexcept
+        {
+            return lastTickBudget_;
+        }
+
+        private:
+        HostThreadingConfig config_;
+        std::size_t dispatchCalls_ = 0;
+        std::size_t tickCalls_ = 0;
+        std::size_t lastLaneCount_ = 0;
+        std::size_t lastTickBudget_ = 0;
     };
 
     KernelBuilder makeStrictBuilder(
@@ -262,6 +352,34 @@ TEST(KernelBuilderTest, TickUsesDefaultBudgetWhenZero)
     ASSERT_TRUE(tickResult.isOk());
     EXPECT_EQ(dispatcherRaw->dispatchCalls(), 1u);
     EXPECT_EQ(dispatcherRaw->lastBudget(), 7u);
+}
+
+TEST(KernelBuilderTest, WithRuntimeWiresRuntimeAndMpDispatcherThroughBuilder)
+{
+    auto runtime = std::make_unique<FakeDispatchRuntime>();
+    FakeDispatchRuntime *runtimeRaw = runtime.get();
+
+    auto lane = std::make_unique<FakeDispatcher>();
+    FakeDispatcher *laneRaw = lane.get();
+
+    DispatcherLanes lanes{std::ref(*laneRaw)};
+    auto mpDispatcher = std::make_unique<MPDispatcher>(lanes, *runtimeRaw);
+
+    auto builder = makeStrictBuilder(std::move(mpDispatcher), 5);
+    [[maybe_unused]] auto &configured = builder.withRuntime(std::move(runtime));
+
+    auto buildResult = builder.build();
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
+
+    ASSERT_TRUE(kernel->createProcess(makeConfig("rt-wiring")).isOk());
+    ASSERT_TRUE(kernel->tick(3).isOk());
+
+    EXPECT_EQ(runtimeRaw->dispatchCalls(), 1u);
+    EXPECT_EQ(runtimeRaw->lastLaneCount(), 1u);
+    EXPECT_EQ(runtimeRaw->lastTickBudget(), 3u);
+    EXPECT_EQ(laneRaw->dispatchCalls(), 1u);
+    EXPECT_EQ(laneRaw->lastBudget(), 3u);
 }
 
 TEST(KernelBuilderTest, BuildFailsWhenDefaultTickBudgetIsZero)

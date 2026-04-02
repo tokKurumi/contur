@@ -17,7 +17,7 @@ namespace contur {
     class MPDispatcher final : public IDispatcher
     {
         public:
-        /// @brief Constructs MP dispatcher with worker dispatchers and injected runtime strategy.
+        /// @brief Constructs MP dispatcher with worker dispatchers and required injected runtime strategy.
         /// @param dispatchers Dispatcher lanes used by the runtime.
         /// @param runtime Runtime strategy injected by composition root.
         MPDispatcher(std::vector<std::reference_wrapper<IDispatcher>> dispatchers, IDispatchRuntime &runtime);

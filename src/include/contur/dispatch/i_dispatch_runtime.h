@@ -40,13 +40,6 @@ namespace contur {
         /// @brief Advances all lanes by one runtime tick.
         /// @param lanes Dispatcher lanes to tick.
         virtual void tick(const DispatcherLanes &lanes) = 0;
-
-        protected:
-        IDispatchRuntime() = default;
-        IDispatchRuntime(const IDispatchRuntime &) = default;
-        IDispatchRuntime &operator=(const IDispatchRuntime &) = default;
-        IDispatchRuntime(IDispatchRuntime &&) = default;
-        IDispatchRuntime &operator=(IDispatchRuntime &&) = default;
     };
 
 } // namespace contur

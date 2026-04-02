@@ -8,6 +8,7 @@
 #include "contur/core/clock.h"
 
 #include "contur/cpu/i_cpu.h"
+#include "contur/dispatch/i_dispatch_runtime.h"
 #include "contur/dispatch/i_dispatcher.h"
 #include "contur/execution/i_execution_engine.h"
 #include "contur/fs/i_filesystem.h"
@@ -91,6 +92,12 @@ namespace contur {
     KernelBuilder &KernelBuilder::withDispatcher(std::unique_ptr<IDispatcher> dispatcher)
     {
         impl_->deps.dispatcher = std::move(dispatcher);
+        return *this;
+    }
+
+    KernelBuilder &KernelBuilder::withRuntime(std::unique_ptr<IDispatchRuntime> runtime)
+    {
+        impl_->deps.runtime = std::move(runtime);
         return *this;
     }
 

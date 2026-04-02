@@ -18,6 +18,7 @@ namespace contur {
     class IScheduler;
     class IDispatcher;
     class IFileSystem;
+    class IDispatchRuntime;
     class IPageReplacementPolicy;
     class ISchedulingPolicy;
     class SyscallTable;
@@ -58,6 +59,10 @@ namespace contur {
 
         /// @brief Syscall dispatch table.
         std::unique_ptr<SyscallTable> syscallTable;
+
+        /// @brief Optional dispatch runtime whose lifetime is managed by the kernel.
+        /// @details When set, the kernel keeps the runtime alive for as long as the dispatcher needs it.
+        std::unique_ptr<IDispatchRuntime> runtime;
 
         /// @brief Default per-dispatch tick budget used when caller passes 0.
         std::size_t defaultTickBudget = static_cast<std::size_t>(DEFAULT_TIME_SLICE);

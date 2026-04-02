@@ -10,6 +10,7 @@
 #include "contur/core/clock.h"
 
 #include "contur/cpu/i_cpu.h"
+#include "contur/dispatch/i_dispatch_runtime.h"
 #include "contur/dispatch/i_dispatcher.h"
 #include "contur/execution/i_execution_engine.h"
 #include "contur/fs/i_filesystem.h"
@@ -34,6 +35,7 @@ namespace contur {
         std::unique_ptr<IExecutionEngine> executionEngine;
         std::unique_ptr<IScheduler> scheduler;
         std::unique_ptr<IDispatcher> dispatcher;
+        std::unique_ptr<IDispatchRuntime> runtime;
         std::unique_ptr<IFileSystem> fileSystem;
         std::unique_ptr<IpcManager> ipcManager;
         std::unique_ptr<SyscallTable> syscallTable;
@@ -51,6 +53,7 @@ namespace contur {
             , executionEngine(std::move(deps.executionEngine))
             , scheduler(std::move(deps.scheduler))
             , dispatcher(std::move(deps.dispatcher))
+            , runtime(std::move(deps.runtime))
             , fileSystem(std::move(deps.fileSystem))
             , ipcManager(std::move(deps.ipcManager))
             , syscallTable(std::move(deps.syscallTable))

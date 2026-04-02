@@ -39,6 +39,10 @@ namespace contur {
         }
 
         ProcessId pid = process->id();
+        if (pid == INVALID_PID)
+        {
+            return Result<void>::error(ErrorCode::InvalidPid);
+        }
         std::size_t target = static_cast<std::size_t>(pid) % impl_->dispatchers.size();
         return impl_->dispatchers[target].get().createProcess(std::move(process), currentTick);
     }
