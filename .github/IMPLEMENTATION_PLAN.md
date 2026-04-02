@@ -306,7 +306,7 @@
 
 ---
 
-## Phase 10.5: Host Multithreading Runtime (`dispatch/` + `scheduling/` + `sync/` + `kernel/`)
+## Phase 11: Host Multithreading Runtime (`dispatch/` + `scheduling/` + `sync/` + `kernel/`)
 
 **Goal**: Introduce real host-thread parallelism with configurable `N >= 1` while preserving the N=1 baseline path and
 preventing architecture drift/spaghetti.
@@ -361,19 +361,19 @@ Follow steps in order; do not skip test gates.
 
 | # | Task | Header | Source | Test | Done |
 |---|---|---|---|---|---|
-| 10.5.1 | `threading_config.h` — `HostThreadingConfig` as runtime-owned config (`hostThreadCount`, `deterministicMode`, `workStealing`) | `dispatch/threading_config.h` | — | — | ✅ |
-| 10.5.2 | Runtime strategy abstraction: `i_dispatch_runtime.h` + serial baseline implementation | `dispatch/i_dispatch_runtime.h`, `dispatch/serial_dispatch_runtime.h` | `dispatch/serial_dispatch_runtime.cpp` | `test_mp_dispatcher.cpp` | ✅ |
-| 10.5.3 | `dispatcher_pool.h` — `DispatcherPool` (PIMPL; owns N workers and N dispatcher lanes; consumes runtime config internally) | `dispatch/dispatcher_pool.h` | `dispatch/dispatcher_pool.cpp` | `test_dispatcher_pool.cpp` | ✅ |
-| 10.5.4 | Refactor `mp_dispatcher.h` integration: runtime injection mandatory via DI, no hidden concrete fallback | `dispatch/mp_dispatcher.h` (update) | `dispatch/mp_dispatcher.cpp` (update) | `test_mp_dispatcher.cpp` | ✅ |
-| 10.5.5 | Update `kernel_builder.h/cpp` composition root to wire runtime/dispatcher components (not raw thread-count fields in kernel) | `kernel/kernel_builder.h` (update) | `kernel/kernel_builder.cpp` (update) | `test_kernel_builder.cpp`, `test_kernel_api.cpp` | ✅ |
-| 10.5.6 | Scheduler concurrency model: per-core ready queues + work stealing + ownership handoff invariants | `scheduling/i_scheduler.h` (update), `scheduling/scheduler.h` (update) | `scheduling/scheduler.cpp` (update) | `test_scheduler_concurrent.cpp` | ✅ |
-| 10.5.7 | Policy contract hardening: policies consume snapshots only (no lock ownership, no shared-state mutation) | `scheduling/i_scheduling_policy.h` (update) | policy `*.cpp` audit | `test_policy_contracts.cpp` | ✅ |
-| 10.5.8 | Synchronization split: kernel-internal locks vs simulated `ISyncPrimitive` resources | `sync/i_sync_primitive.h` (update docs), `sync/*.h` audit | `sync/*.cpp` updates | `test_sync_layers.cpp` | ✅ |
-| 10.5.9 | Priority inversion controls for simulated mutex/semaphore (priority inheritance/boost rules) | `sync/mutex.h` (update), `sync/semaphore.h` (update) | `sync/mutex.cpp`, `sync/semaphore.cpp` | `test_priority_inversion.cpp` | ✅ |
-| 10.5.10 | Shared resource arbitration: MMU/page-table critical sections + per-device serialization + IPC channel guards | `memory/*.h` (targeted updates), `io/*.h`, `ipc/*.h` | `memory/*.cpp`, `io/*.cpp`, `ipc/*.cpp` | `test_resource_contention.cpp` | ✅ |
-| 10.5.11 | Deadlock detector v2: simulated wait-for graph (thread-aware) + internal lock-order graph | `sync/deadlock_detector.h` (update) | `sync/deadlock_detector.cpp` (update) | `test_deadlock_detector_concurrent.cpp` | ✅ |
-| 10.5.12 | Deterministic N>1 mode: epoch/barrier checkpoints + stable tie-break ordering for replayability | `dispatch/dispatcher_pool.h` (update), `core/clock.h` (if needed) | `dispatch/dispatcher_pool.cpp` | `test_deterministic_multithread.cpp` | ✅ |
-| 10.5.13 | Thread-aware tracing metadata (worker id, sequence, epoch) for reproducible diagnostics | `tracing/trace_event.h` (update) | `tracing/*.cpp` updates | `test_tracer_concurrent.cpp` | ✅ |
+| 11.1 | `threading_config.h` — `HostThreadingConfig` as runtime-owned config (`hostThreadCount`, `deterministicMode`, `workStealing`) | `dispatch/threading_config.h` | — | — | ✅ |
+| 11.2 | Runtime strategy abstraction: `i_dispatch_runtime.h` + serial baseline implementation | `dispatch/i_dispatch_runtime.h`, `dispatch/serial_dispatch_runtime.h` | `dispatch/serial_dispatch_runtime.cpp` | `test_mp_dispatcher.cpp` | ✅ |
+| 11.3 | `dispatcher_pool.h` — `DispatcherPool` (PIMPL; owns N workers and N dispatcher lanes; consumes runtime config internally) | `dispatch/dispatcher_pool.h` | `dispatch/dispatcher_pool.cpp` | `test_dispatcher_pool.cpp` | ✅ |
+| 11.4 | Refactor `mp_dispatcher.h` integration: runtime injection mandatory via DI, no hidden concrete fallback | `dispatch/mp_dispatcher.h` (update) | `dispatch/mp_dispatcher.cpp` (update) | `test_mp_dispatcher.cpp` | ✅ |
+| 11.5 | Update `kernel_builder.h/cpp` composition root to wire runtime/dispatcher components (not raw thread-count fields in kernel) | `kernel/kernel_builder.h` (update) | `kernel/kernel_builder.cpp` (update) | `test_kernel_builder.cpp`, `test_kernel_api.cpp` | ✅ |
+| 11.6 | Scheduler concurrency model: per-core ready queues + work stealing + ownership handoff invariants | `scheduling/i_scheduler.h` (update), `scheduling/scheduler.h` (update) | `scheduling/scheduler.cpp` (update) | `test_scheduler_concurrent.cpp` | ✅ |
+| 11.7 | Policy contract hardening: policies consume snapshots only (no lock ownership, no shared-state mutation) | `scheduling/i_scheduling_policy.h` (update) | policy `*.cpp` audit | `test_policy_contracts.cpp` | ✅ |
+| 11.8 | Synchronization split: kernel-internal locks vs simulated `ISyncPrimitive` resources | `sync/i_sync_primitive.h` (update docs), `sync/*.h` audit | `sync/*.cpp` updates | `test_sync_layers.cpp` | ✅ |
+| 11.9 | Priority inversion controls for simulated mutex/semaphore (priority inheritance/boost rules) | `sync/mutex.h` (update), `sync/semaphore.h` (update) | `sync/mutex.cpp`, `sync/semaphore.cpp` | `test_priority_inversion.cpp` | ✅ |
+| 11.10 | Shared resource arbitration: MMU/page-table critical sections + per-device serialization + IPC channel guards | `memory/*.h` (targeted updates), `io/*.h`, `ipc/*.h` | `memory/*.cpp`, `io/*.cpp`, `ipc/*.cpp` | `test_resource_contention.cpp` | ✅ |
+| 11.11 | Deadlock detector v2: simulated wait-for graph (thread-aware) + internal lock-order graph | `sync/deadlock_detector.h` (update) | `sync/deadlock_detector.cpp` (update) | `test_deadlock_detector_concurrent.cpp` | ✅ |
+| 11.12 | Deterministic N>1 mode: epoch/barrier checkpoints + stable tie-break ordering for replayability | `dispatch/dispatcher_pool.h` (update), `core/clock.h` (if needed) | `dispatch/dispatcher_pool.cpp` | `test_deterministic_multithread.cpp` | ✅ |
+| 11.13 | Thread-aware tracing metadata (worker id, sequence, epoch) for reproducible diagnostics | `tracing/trace_event.h` (update) | `tracing/*.cpp` updates | `test_tracer_concurrent.cpp` | ✅ |
 
 ### Acceptance Criteria
 - Dispatcher/runtime layer supports configurable `N >= 1` host threads from a single code path.
@@ -388,25 +388,25 @@ Follow steps in order; do not skip test gates.
 
 ---
 
-## Phase 11: Tracing (`tracing/`)
+## Phase 12: Tracing (`tracing/`)
 
 **Goal**: Implement the compile-time-toggled tracing subsystem (Observer pattern, zero-cost in Release).
 
-**Dependencies**: Phase 1 (IClock, Event), Phase 10 (Kernel for integration), Phase 10.5 (concurrent runtime metadata)
+**Dependencies**: Phase 1 (IClock, Event), Phase 10 (Kernel for integration), Phase 11 (concurrent runtime metadata)
 
 ### Tasks
 
 | # | Task | Header | Source | Test | Done |
 |---|---|---|---|---|---|
-| 11.1 | `trace_event.h` — `TraceEvent` struct (timestamp, subsystem, operation, details, depth) | `tracing/trace_event.h` | — | — | |
-| 11.2 | `trace_sink.h` — `ITraceSink` interface (write) | `tracing/trace_sink.h` | — | — | |
-| 11.3 | `i_tracer.h` — `ITracer` interface (trace, pushScope, popScope, currentDepth, clock) | `tracing/i_tracer.h` | — | — | |
-| 11.4 | `tracer.h` — `Tracer` (PIMPL; active implementation writing to ITraceSink) | `tracing/tracer.h` | `tracing/tracer.cpp` | `test_tracer.cpp` | |
-| 11.5 | `null_tracer.h` — `NullTracer` (inline no-ops) | `tracing/null_tracer.h` | — | — | |
-| 11.6 | `trace_scope.h` — `TraceScope` RAII guard + `CONTUR_TRACE_SCOPE` / `CONTUR_TRACE` macros | `tracing/trace_scope.h` | — | — | |
-| 11.7 | Sink implementations: `ConsoleSink`, `FileSink`, `BufferSink` | `tracing/console_sink.h` + 2 | `tracing/console_sink.cpp` + 2 | `test_buffer_sink.cpp` | |
-| 11.8 | CMake: `CONTUR2_ENABLE_TRACING` option, `CONTUR_TRACE_ENABLED` define | `src/CMakeLists.txt` (update) | — | — | |
-| 11.9 | Wire tracer into KernelBuilder and inject into all subsystems | update `kernel_builder.cpp` | — | — | |
+| 12.1 | `trace_event.h` — `TraceEvent` struct (timestamp, subsystem, operation, details, depth) | `tracing/trace_event.h` | — | — | |
+| 12.2 | `trace_sink.h` — `ITraceSink` interface (write) | `tracing/trace_sink.h` | — | — | |
+| 12.3 | `i_tracer.h` — `ITracer` interface (trace, pushScope, popScope, currentDepth, clock) | `tracing/i_tracer.h` | — | — | |
+| 12.4 | `tracer.h` — `Tracer` (PIMPL; active implementation writing to ITraceSink) | `tracing/tracer.h` | `tracing/tracer.cpp` | `test_tracer.cpp` | |
+| 12.5 | `null_tracer.h` — `NullTracer` (inline no-ops) | `tracing/null_tracer.h` | — | — | |
+| 12.6 | `trace_scope.h` — `TraceScope` RAII guard + `CONTUR_TRACE_SCOPE` / `CONTUR_TRACE` macros | `tracing/trace_scope.h` | — | — | |
+| 12.7 | Sink implementations: `ConsoleSink`, `FileSink`, `BufferSink` | `tracing/console_sink.h` + 2 | `tracing/console_sink.cpp` + 2 | `test_buffer_sink.cpp` | |
+| 12.8 | CMake: `CONTUR2_ENABLE_TRACING` option, `CONTUR_TRACE_ENABLED` define | `src/CMakeLists.txt` (update) | — | — | |
+| 12.9 | Wire tracer into KernelBuilder and inject into all subsystems | update `kernel_builder.cpp` | — | — | |
 
 ### Acceptance Criteria
 - Tracer + BufferSink: emit 3 nested scoped events → buffer contains 3 events with depth 0,1,2
@@ -416,7 +416,7 @@ Follow steps in order; do not skip test gates.
 
 ---
 
-## Phase 12: Terminal UI (`tui/`)
+## Phase 13: Terminal UI (`tui/`)
 
 **Goal**: ANSI-based real-time visualization of OS state: processes, memory, scheduler queues.
 
@@ -426,12 +426,12 @@ Follow steps in order; do not skip test gates.
 
 | # | Task | Header | Source | Test | Done |
 |---|---|---|---|---|---|
-| 12.1 | `ansi.h` — ANSI escape code helpers (cursor move, colors, box drawing, clear screen) | `tui/ansi.h` | — | — | |
-| 12.2 | `i_renderer.h` — `IRenderer` interface (render, clear) | `tui/i_renderer.h` | — | — | |
-| 12.3 | `process_view.h` — `ProcessView` (table: PID, name, state, priority, CPU time; color by state) | `tui/process_view.h` | `tui/process_view.cpp` | — | |
-| 12.4 | `memory_map_view.h` — `MemoryMapView` (grid of physical frames; color by owning process) | `tui/memory_map_view.h` | `tui/memory_map_view.cpp` | — | |
-| 12.5 | `scheduler_view.h` — `SchedulerView` (ready/blocked queues; Gantt chart timeline) | `tui/scheduler_view.h` | `tui/scheduler_view.cpp` | — | |
-| 12.6 | `dashboard.h` — `Dashboard` (composite layout; arranges views; refreshes on tick) | `tui/dashboard.h` | `tui/dashboard.cpp` | — | |
+| 13.1 | `ansi.h` — ANSI escape code helpers (cursor move, colors, box drawing, clear screen) | `tui/ansi.h` | — | — | |
+| 13.2 | `i_renderer.h` — `IRenderer` interface (render, clear) | `tui/i_renderer.h` | — | — | |
+| 13.3 | `process_view.h` — `ProcessView` (table: PID, name, state, priority, CPU time; color by state) | `tui/process_view.h` | `tui/process_view.cpp` | — | |
+| 13.4 | `memory_map_view.h` — `MemoryMapView` (grid of physical frames; color by owning process) | `tui/memory_map_view.h` | `tui/memory_map_view.cpp` | — | |
+| 13.5 | `scheduler_view.h` — `SchedulerView` (ready/blocked queues; Gantt chart timeline) | `tui/scheduler_view.h` | `tui/scheduler_view.cpp` | — | |
+| 13.6 | `dashboard.h` — `Dashboard` (composite layout; arranges views; refreshes on tick) | `tui/dashboard.h` | `tui/dashboard.cpp` | — | |
 
 ### Acceptance Criteria
 - ANSI helpers produce correct escape sequences
@@ -440,31 +440,31 @@ Follow steps in order; do not skip test gates.
 
 ---
 
-## Phase 13: Demos + CLI (`demos/` + `app/`)
+## Phase 14: Demos + CLI (`demos/` + `app/`)
 
 **Goal**: Interactive console menu with demo programs for each subsystem. Step-by-step in Debug, continuous in Release.
 
-**Dependencies**: Phases 10, 10.5, 11, 12
+**Dependencies**: Phases 10, 11, 12, 13
 
 ### Tasks
 
 | # | Task | Files | Test | Done |
 |---|---|---|---|---|
-| 13.1 | `stepper.h` / `stepper.cpp` — `Stepper` utility (CONTUR_STEP_MODE toggle) | `demos/include/demos/stepper.h`, `demos/src/stepper.cpp` | — | |
-| 13.2 | `demos.h` — all demo function declarations | `demos/include/demos/demos.h` | — | |
-| 13.3 | `demo_context.cpp` — `DemoContext` (PIMPL, bundles Kernel + subsystem references) | `demos/src/demo_context.cpp` | — | |
-| 13.4 | `demo_architecture.cpp` — registers, instruction set, fetch-decode-execute | `demos/src/demo_architecture.cpp` | — | |
-| 13.5 | `demo_process.cpp` — process creation, priority, state transitions | `demos/src/demo_process.cpp` | — | |
-| 13.6 | `demo_memory.cpp` — MMU, virtual memory, page replacement | `demos/src/demo_memory.cpp` | — | |
-| 13.7 | `demo_scheduling.cpp` — all 7 scheduling algorithms comparison | `demos/src/demo_scheduling.cpp` | — | |
-| 13.8 | `demo_synchronization.cpp` — mutex, semaphore, critical section | `demos/src/demo_synchronization.cpp` | — | |
-| 13.9 | `demo_deadlock.cpp` — deadlock detection and prevention | `demos/src/demo_deadlock.cpp` | — | |
-| 13.10 | `demo_ipc.cpp` — pipes, shared memory, message queues | `demos/src/demo_ipc.cpp` | — | |
-| 13.11 | `demo_filesystem.cpp` — file system operations | `demos/src/demo_filesystem.cpp` | — | |
-| 13.12 | `demo_multiprocessor.cpp` — multiprocessor scheduling | `demos/src/demo_multiprocessor.cpp` | — | |
-| 13.13 | `demo_interpreter.cpp` — bytecode interpreter step-through | `demos/src/demo_interpreter.cpp` | — | |
-| 13.14 | `demo_native.cpp` — native process management (stub until Phase 14) | `demos/src/demo_native.cpp` | — | |
-| 13.15 | `main.cpp` — CLI menu loop, KernelBuilder wiring, demo dispatch | `app/main.cpp` | — | |
+| 14.1 | `stepper.h` / `stepper.cpp` — `Stepper` utility (CONTUR_STEP_MODE toggle) | `demos/include/demos/stepper.h`, `demos/src/stepper.cpp` | — | |
+| 14.2 | `demos.h` — all demo function declarations | `demos/include/demos/demos.h` | — | |
+| 14.3 | `demo_context.cpp` — `DemoContext` (PIMPL, bundles Kernel + subsystem references) | `demos/src/demo_context.cpp` | — | |
+| 14.4 | `demo_architecture.cpp` — registers, instruction set, fetch-decode-execute | `demos/src/demo_architecture.cpp` | — | |
+| 14.5 | `demo_process.cpp` — process creation, priority, state transitions | `demos/src/demo_process.cpp` | — | |
+| 14.6 | `demo_memory.cpp` — MMU, virtual memory, page replacement | `demos/src/demo_memory.cpp` | — | |
+| 14.7 | `demo_scheduling.cpp` — all 7 scheduling algorithms comparison | `demos/src/demo_scheduling.cpp` | — | |
+| 14.8 | `demo_synchronization.cpp` — mutex, semaphore, critical section | `demos/src/demo_synchronization.cpp` | — | |
+| 14.9 | `demo_deadlock.cpp` — deadlock detection and prevention | `demos/src/demo_deadlock.cpp` | — | |
+| 14.10 | `demo_ipc.cpp` — pipes, shared memory, message queues | `demos/src/demo_ipc.cpp` | — | |
+| 14.11 | `demo_filesystem.cpp` — file system operations | `demos/src/demo_filesystem.cpp` | — | |
+| 14.12 | `demo_multiprocessor.cpp` — multiprocessor scheduling | `demos/src/demo_multiprocessor.cpp` | — | |
+| 14.13 | `demo_interpreter.cpp` — bytecode interpreter step-through | `demos/src/demo_interpreter.cpp` | — | |
+| 14.14 | `demo_native.cpp` — native process management (stub until Phase 15) | `demos/src/demo_native.cpp` | — | |
+| 14.15 | `main.cpp` — CLI menu loop, KernelBuilder wiring, demo dispatch | `app/main.cpp` | — | |
 
 ### Acceptance Criteria
 - All demos run in Release mode without pausing
@@ -474,21 +474,21 @@ Follow steps in order; do not skip test gates.
 
 ---
 
-## Phase 14: Native Execution Engine (`execution/`)
+## Phase 15: Native Execution Engine (`execution/`)
 
 **Goal**: Manage real OS child processes under the simulator's scheduler via platform APIs.
 
-**Dependencies**: Phase 5 (IExecutionEngine interface), Phase 10 (Kernel), Phase 10.5 (host runtime topology)
+**Dependencies**: Phase 5 (IExecutionEngine interface), Phase 10 (Kernel), Phase 11 (host runtime topology)
 
 ### Tasks
 
 | # | Task | Header | Source | Test | Done |
 |---|---|---|---|---|---|
-| 14.1 | `native_engine.h` — `NativeEngine` (PIMPL; platform-abstract real-process management) | `execution/native_engine.h` | `execution/native_engine.cpp` | `test_native_engine.cpp` | |
-| 14.2 | POSIX impl in `Impl`: `fork/exec`, `SIGSTOP/SIGCONT`, `waitpid` | Inside `native_engine.cpp` (`#if defined(__unix__)`) | — | — | |
-| 14.3 | Windows impl in `Impl`: `CreateProcess`, `SuspendThread/ResumeThread`, `TerminateProcess` | Inside `native_engine.cpp` (`#elif defined(_WIN32)`) | — | — | |
-| 14.4 | Integration: `NativeEngine` in `KernelBuilder`, run external binary under scheduler control | — | — | `test_native_integration.cpp` | |
-| 14.5 | Update `demo_native.cpp` with real functionality | `demos/src/demo_native.cpp` | — | — | |
+| 15.1 | `native_engine.h` — `NativeEngine` (PIMPL; platform-abstract real-process management) | `execution/native_engine.h` | `execution/native_engine.cpp` | `test_native_engine.cpp` | |
+| 15.2 | POSIX impl in `Impl`: `fork/exec`, `SIGSTOP/SIGCONT`, `waitpid` | Inside `native_engine.cpp` (`#if defined(__unix__)`) | — | — | |
+| 15.3 | Windows impl in `Impl`: `CreateProcess`, `SuspendThread/ResumeThread`, `TerminateProcess` | Inside `native_engine.cpp` (`#elif defined(_WIN32)`) | — | — | |
+| 15.4 | Integration: `NativeEngine` in `KernelBuilder`, run external binary under scheduler control | — | — | `test_native_integration.cpp` | |
+| 15.5 | Update `demo_native.cpp` with real functionality | `demos/src/demo_native.cpp` | — | — | |
 
 ### Acceptance Criteria
 - NativeEngine on Linux: launches `/bin/echo hello`, captures exit code
@@ -497,7 +497,7 @@ Follow steps in order; do not skip test gates.
 
 ---
 
-## Phase 15: Full Test Suite (`tests/`)
+## Phase 16: Full Test Suite (`tests/`)
 
 **Goal**: Comprehensive unit and integration test coverage.
 
@@ -507,18 +507,18 @@ Follow steps in order; do not skip test gates.
 
 | # | Task | Files | Done |
 |---|---|---|---|
-| 15.1 | Audit all existing unit tests, fill coverage gaps | `tests/unit/test_*.cpp` | |
-| 15.2 | `test_dispatcher_flow.cpp` — full lifecycle integration test | `tests/integration/test_dispatcher_flow.cpp` | |
-| 15.3 | `test_interpreter_execution.cpp` — program load → execute → verify output | `tests/integration/test_interpreter_execution.cpp` | |
-| 15.4 | `test_kernel_api.cpp` — end-to-end through IKernel | `tests/integration/test_kernel_api.cpp` | |
-| 15.5 | `test_ipc_flow.cpp` — producer/consumer through pipes + message queues | `tests/integration/test_ipc_flow.cpp` | |
-| 15.6 | `test_filesystem_io.cpp` — file create/read/write/delete through syscalls | `tests/integration/test_filesystem_io.cpp` | |
-| 15.7 | Coverage report: target 80%+ line coverage | — | |
-| 15.8 | `test_scheduler_concurrent.cpp` — per-core queue correctness + work stealing behavior under load | `tests/unit/test_scheduler_concurrent.cpp` | |
-| 15.9 | `test_deadlock_detector_concurrent.cpp` — thread-aware wait-for cycles + internal lock-order cycle detection | `tests/unit/test_deadlock_detector_concurrent.cpp` | |
-| 15.10 | `test_deterministic_multithread.cpp` — identical seed/config produces identical scheduling/trace order in N>1 mode | `tests/integration/test_deterministic_multithread.cpp` | |
-| 15.11 | Stress suite: high-contention memory/device/IPC scenarios with bounded-time liveness checks | `tests/integration/test_contention_stress.cpp` | |
-| 15.12 | ThreadSanitizer lane (`debug-tsan`) for race detection on multithreaded paths | build/test preset update | |
+| 16.1 | Audit all existing unit tests, fill coverage gaps | `tests/unit/test_*.cpp` | |
+| 16.2 | `test_dispatcher_flow.cpp` — full lifecycle integration test | `tests/integration/test_dispatcher_flow.cpp` | |
+| 16.3 | `test_interpreter_execution.cpp` — program load → execute → verify output | `tests/integration/test_interpreter_execution.cpp` | |
+| 16.4 | `test_kernel_api.cpp` — end-to-end through IKernel | `tests/integration/test_kernel_api.cpp` | |
+| 16.5 | `test_ipc_flow.cpp` — producer/consumer through pipes + message queues | `tests/integration/test_ipc_flow.cpp` | |
+| 16.6 | `test_filesystem_io.cpp` — file create/read/write/delete through syscalls | `tests/integration/test_filesystem_io.cpp` | |
+| 16.7 | Coverage report: target 80%+ line coverage | — | |
+| 16.8 | `test_scheduler_concurrent.cpp` — per-core queue correctness + work stealing behavior under load | `tests/unit/test_scheduler_concurrent.cpp` | |
+| 16.9 | `test_deadlock_detector_concurrent.cpp` — thread-aware wait-for cycles + internal lock-order cycle detection | `tests/unit/test_deadlock_detector_concurrent.cpp` | |
+| 16.10 | `test_deterministic_multithread.cpp` — identical seed/config produces identical scheduling/trace order in N>1 mode | `tests/integration/test_deterministic_multithread.cpp` | |
+| 16.11 | Stress suite: high-contention memory/device/IPC scenarios with bounded-time liveness checks | `tests/integration/test_contention_stress.cpp` | |
+| 16.12 | ThreadSanitizer lane (`debug-tsan`) for race detection on multithreaded paths | build/test preset update | |
 
 ### Acceptance Criteria
 - `ctest --preset debug` passes all tests with zero failures
@@ -529,7 +529,7 @@ Follow steps in order; do not skip test gates.
 
 ---
 
-## Phase 16: Documentation & CI
+## Phase 17: Documentation & CI
 
 **Goal**: Finalize API docs, Doxygen, and CI pipeline.
 
@@ -539,14 +539,14 @@ Follow steps in order; do not skip test gates.
 
 | # | Task | Done |
 |---|---|---|
-| 16.1 | Add `///` Doxygen comments to all public interfaces | [ ] |
-| 16.2 | CMake `doxygen_add_docs` target | [ ] |
-| 16.3 | GitHub Actions workflow: matrix (Clang + GCC) × (Debug + Release), test, sanitizers | [ ] |
-| 16.4 | Coverage step in CI (lcov/gcov or llvm-cov) | [ ] |
-| 16.5 | README.md for src/ with build instructions and demo screenshots | [ ] |
-| 16.6 | Document multithreading runtime architecture (N>=1, per-core queues, work stealing, deterministic mode) | [ ] |
-| 16.7 | Add CI matrix axis for host-thread counts (at least N=1 and N=4) + TSAN job | [ ] |
-| 16.8 | Document lock hierarchy, shared-resource arbitration rules, and deadlock analysis model (simulated + internal) | [ ] |
+| 17.1 | Add `///` Doxygen comments to all public interfaces | [ ] |
+| 17.2 | CMake `doxygen_add_docs` target | [ ] |
+| 17.3 | GitHub Actions workflow: matrix (Clang + GCC) × (Debug + Release), test, sanitizers | [ ] |
+| 17.4 | Coverage step in CI (lcov/gcov or llvm-cov) | [ ] |
+| 17.5 | README.md for src/ with build instructions and demo screenshots | [ ] |
+| 17.6 | Document multithreading runtime architecture (N>=1, per-core queues, work stealing, deterministic mode) | [ ] |
+| 17.7 | Add CI matrix axis for host-thread counts (at least N=1 and N=4) + TSAN job | [ ] |
+| 17.8 | Document lock hierarchy, shared-resource arbitration rules, and deadlock analysis model (simulated + internal) | [ ] |
 
 ### Acceptance Criteria
 - `cmake --build --preset debug --target docs` generates HTML API docs
@@ -617,13 +617,13 @@ Phase 7:  Dispatch + Sync          ███████████████
 Phase 8:  IPC + Syscalls           ████████████         ✅  (8 tasks,  33 tests)
 Phase 9:  File System              ████████████         ✅  (6 tasks,  14 tests)
 Phase 10: Kernel                   ████████
-Phase 10.5: Host MT Runtime        ████████████
-Phase 11: Tracing                  ████████
-Phase 12: TUI                      ████████████
-Phase 13: Demos + CLI              ████████████████
-Phase 14: Native Engine            ████████
-Phase 15: Tests                    ████████████
-Phase 16: Docs + CI                ████████
+Phase 11: Host MT Runtime          ████████████
+Phase 12: Tracing                  ████████
+Phase 13: TUI                      ████████████
+Phase 14: Demos + CLI              ████████████████
+Phase 15: Native Engine            ████████
+Phase 16: Tests                    ████████████
+Phase 17: Docs + CI                ████████
 
 Total: 456 unit tests passing (Phases 0–9)
 ```
