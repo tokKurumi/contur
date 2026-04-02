@@ -40,12 +40,16 @@ namespace contur {
         /// @param memory Reference to the memory subsystem (must outlive the engine).
         explicit InterpreterEngine(ICPU &cpu, IMemory &memory);
 
+        /// @brief Destroys interpreter engine.
         ~InterpreterEngine() override;
 
         // Non-copyable, movable
         InterpreterEngine(const InterpreterEngine &) = delete;
         InterpreterEngine &operator=(const InterpreterEngine &) = delete;
+        /// @brief Move-constructs interpreter engine state.
         InterpreterEngine(InterpreterEngine &&) noexcept;
+
+        /// @brief Move-assigns interpreter engine state.
         InterpreterEngine &operator=(InterpreterEngine &&) noexcept;
 
         /// @copydoc IExecutionEngine::execute

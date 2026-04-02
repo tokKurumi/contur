@@ -84,12 +84,21 @@ namespace contur {
     class FileDescriptorTable final
     {
         public:
+        /// @brief Constructs an empty file descriptor table.
         FileDescriptorTable();
+
+        /// @brief Destroys descriptor table.
         ~FileDescriptorTable();
 
+        /// @brief Copy construction is disabled.
         FileDescriptorTable(const FileDescriptorTable &) = delete;
+
+        /// @brief Copy assignment is disabled.
         FileDescriptorTable &operator=(const FileDescriptorTable &) = delete;
+        /// @brief Move-constructs descriptor table state.
         FileDescriptorTable(FileDescriptorTable &&) noexcept;
+
+        /// @brief Move-assigns descriptor table state.
         FileDescriptorTable &operator=(FileDescriptorTable &&) noexcept;
 
         /// @brief Creates a new descriptor entry.

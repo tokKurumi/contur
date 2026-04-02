@@ -24,12 +24,21 @@ namespace contur {
         /// @brief Function signature used for syscall handlers.
         using HandlerFn = std::function<Result<RegisterValue>(std::span<const RegisterValue>, ProcessImage &)>;
 
+        /// @brief Constructs empty syscall handler table.
         SyscallTable();
+
+        /// @brief Destroys syscall handler table.
         ~SyscallTable();
 
+        /// @brief Copy construction is disabled.
         SyscallTable(const SyscallTable &) = delete;
+
+        /// @brief Copy assignment is disabled.
         SyscallTable &operator=(const SyscallTable &) = delete;
+        /// @brief Move-constructs syscall handler table state.
         SyscallTable(SyscallTable &&) noexcept;
+
+        /// @brief Move-assigns syscall handler table state.
         SyscallTable &operator=(SyscallTable &&) noexcept;
 
         /// @brief Registers/replaces a function handler for syscall id.

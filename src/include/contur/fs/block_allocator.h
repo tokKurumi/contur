@@ -19,11 +19,19 @@ namespace contur {
         /// @brief Creates a block allocator over a fixed number of blocks.
         /// @param totalBlocks Total number of allocatable blocks.
         explicit BlockAllocator(std::size_t totalBlocks);
+
+        /// @brief Destroys block allocator.
         ~BlockAllocator();
 
+        /// @brief Copy construction is disabled.
         BlockAllocator(const BlockAllocator &) = delete;
+
+        /// @brief Copy assignment is disabled.
         BlockAllocator &operator=(const BlockAllocator &) = delete;
+        /// @brief Move-constructs allocator state.
         BlockAllocator(BlockAllocator &&) noexcept;
+
+        /// @brief Move-assigns allocator state.
         BlockAllocator &operator=(BlockAllocator &&) noexcept;
 
         /// @brief Allocates one free block.

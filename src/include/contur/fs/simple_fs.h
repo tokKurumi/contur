@@ -21,11 +21,19 @@ namespace contur {
         /// @param totalBlocks Number of simulated disk blocks.
         /// @param blockSize Size of each block in bytes.
         explicit SimpleFS(std::size_t totalBlocks = 256, std::size_t blockSize = 512);
+
+        /// @brief Destroys filesystem instance.
         ~SimpleFS() override;
 
+        /// @brief Copy construction is disabled.
         SimpleFS(const SimpleFS &) = delete;
+
+        /// @brief Copy assignment is disabled.
         SimpleFS &operator=(const SimpleFS &) = delete;
+        /// @brief Move-constructs filesystem state.
         SimpleFS(SimpleFS &&) noexcept;
+
+        /// @brief Move-assigns filesystem state.
         SimpleFS &operator=(SimpleFS &&) noexcept;
 
         /// @brief Opens file path with requested mode.

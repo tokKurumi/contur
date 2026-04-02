@@ -33,12 +33,16 @@ namespace contur {
         /// @param memory Reference to the memory subsystem (must outlive the CPU).
         explicit Cpu(IMemory &memory);
 
+        /// @brief Destroys CPU.
         ~Cpu() override;
 
         // Non-copyable, movable
         Cpu(const Cpu &) = delete;
         Cpu &operator=(const Cpu &) = delete;
+        /// @brief Move-constructs CPU state.
         Cpu(Cpu &&) noexcept;
+
+        /// @brief Move-assigns CPU state.
         Cpu &operator=(Cpu &&) noexcept;
 
         /// @copydoc ICPU::step

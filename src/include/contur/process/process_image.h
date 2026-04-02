@@ -49,6 +49,7 @@ namespace contur {
             Tick arrivalTime = 0
         );
 
+        /// @brief Destroys process image.
         ~ProcessImage();
 
         // Non-copyable
@@ -56,7 +57,10 @@ namespace contur {
         ProcessImage &operator=(const ProcessImage &) = delete;
 
         // Movable
+        /// @brief Move-constructs process image state.
         ProcessImage(ProcessImage &&) noexcept;
+
+        /// @brief Move-assigns process image state.
         ProcessImage &operator=(ProcessImage &&) noexcept;
 
         /// @brief Returns a const reference to the PCB.

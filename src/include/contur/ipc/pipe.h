@@ -20,11 +20,19 @@ namespace contur {
         /// @param name Channel name used by registries and diagnostics.
         /// @param capacity Maximum number of buffered bytes.
         explicit Pipe(std::string name, std::size_t capacity = 1024);
+
+        /// @brief Destroys pipe channel.
         ~Pipe() override;
 
+        /// @brief Copy construction is disabled.
         Pipe(const Pipe &) = delete;
+
+        /// @brief Copy assignment is disabled.
         Pipe &operator=(const Pipe &) = delete;
+        /// @brief Move-constructs pipe state.
         Pipe(Pipe &&) noexcept;
+
+        /// @brief Move-assigns pipe state.
         Pipe &operator=(Pipe &&) noexcept;
 
         /// @brief Writes bytes into the pipe buffer.

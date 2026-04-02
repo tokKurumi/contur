@@ -26,13 +26,19 @@ namespace contur {
     class DeviceManager
     {
         public:
+        /// @brief Constructs an empty device registry.
         DeviceManager();
+
+        /// @brief Destroys registry and owned devices.
         ~DeviceManager();
 
         // Non-copyable, movable
         DeviceManager(const DeviceManager &) = delete;
         DeviceManager &operator=(const DeviceManager &) = delete;
+        /// @brief Move-constructs registry state.
         DeviceManager(DeviceManager &&) noexcept;
+
+        /// @brief Move-assigns registry state.
         DeviceManager &operator=(DeviceManager &&) noexcept;
 
         /// @brief Registers a device. Takes ownership.

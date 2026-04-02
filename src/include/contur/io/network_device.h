@@ -25,18 +25,32 @@ namespace contur {
         /// @brief Constructs a network device with the given buffer capacity.
         /// @param bufferCapacity Maximum number of values in the send/receive buffer.
         explicit NetworkDevice(std::size_t bufferCapacity = 256);
+
+        /// @brief Destroys network device.
         ~NetworkDevice() override;
 
         // Non-copyable, movable
         NetworkDevice(const NetworkDevice &) = delete;
         NetworkDevice &operator=(const NetworkDevice &) = delete;
+        /// @brief Move-constructs network device state.
         NetworkDevice(NetworkDevice &&) noexcept;
+
+        /// @brief Move-assigns network device state.
         NetworkDevice &operator=(NetworkDevice &&) noexcept;
 
+        /// @copydoc IDevice::id
         [[nodiscard]] DeviceId id() const noexcept override;
+
+        /// @copydoc IDevice::name
         [[nodiscard]] std::string_view name() const noexcept override;
+
+        /// @copydoc IDevice::read
         [[nodiscard]] Result<RegisterValue> read() override;
+
+        /// @copydoc IDevice::write
         [[nodiscard]] Result<void> write(RegisterValue value) override;
+
+        /// @copydoc IDevice::isReady
         [[nodiscard]] bool isReady() const noexcept override;
 
         /// @brief Returns the number of values currently in the buffer.

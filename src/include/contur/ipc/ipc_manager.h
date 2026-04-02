@@ -17,12 +17,21 @@ namespace contur {
     class IpcManager
     {
         public:
+        /// @brief Constructs empty IPC channel registry.
         IpcManager();
+
+        /// @brief Destroys registry and all owned channels.
         ~IpcManager();
 
+        /// @brief Copy construction is disabled.
         IpcManager(const IpcManager &) = delete;
+
+        /// @brief Copy assignment is disabled.
         IpcManager &operator=(const IpcManager &) = delete;
+        /// @brief Move-constructs registry state.
         IpcManager(IpcManager &&) noexcept;
+
+        /// @brief Move-assigns registry state.
         IpcManager &operator=(IpcManager &&) noexcept;
 
         /// @brief Creates a pipe channel if it does not already exist.

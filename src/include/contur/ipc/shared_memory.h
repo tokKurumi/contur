@@ -23,11 +23,19 @@ namespace contur {
         /// @param name Channel name.
         /// @param bytes Size of memory region in bytes.
         explicit SharedMemory(std::string name, std::size_t bytes);
+
+        /// @brief Destroys shared-memory channel.
         ~SharedMemory() override;
 
+        /// @brief Copy construction is disabled.
         SharedMemory(const SharedMemory &) = delete;
+
+        /// @brief Copy assignment is disabled.
         SharedMemory &operator=(const SharedMemory &) = delete;
+        /// @brief Move-constructs shared-memory state.
         SharedMemory(SharedMemory &&) noexcept;
+
+        /// @brief Move-assigns shared-memory state.
         SharedMemory &operator=(SharedMemory &&) noexcept;
 
         /// @brief Writes bytes into the beginning of the shared region.

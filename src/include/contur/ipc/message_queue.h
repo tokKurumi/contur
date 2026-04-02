@@ -35,11 +35,19 @@ namespace contur {
         /// @param maxMessages Maximum number of queued messages.
         /// @param priorityMode True enables priority ordering.
         explicit MessageQueue(std::string name, std::size_t maxMessages = 64, bool priorityMode = false);
+
+        /// @brief Destroys message queue.
         ~MessageQueue() override;
 
+        /// @brief Copy construction is disabled.
         MessageQueue(const MessageQueue &) = delete;
+
+        /// @brief Copy assignment is disabled.
         MessageQueue &operator=(const MessageQueue &) = delete;
+        /// @brief Move-constructs queue state.
         MessageQueue(MessageQueue &&) noexcept;
+
+        /// @brief Move-assigns queue state.
         MessageQueue &operator=(MessageQueue &&) noexcept;
 
         /// @brief Enqueues a raw payload as a message.

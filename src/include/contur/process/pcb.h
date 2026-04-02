@@ -61,6 +61,7 @@ namespace contur {
         /// @param arrivalTime Simulation tick when the process was created.
         PCB(ProcessId id, std::string name, Priority priority = Priority{}, Tick arrivalTime = 0);
 
+        /// @brief Destroys process control block.
         ~PCB();
 
         // Non-copyable
@@ -68,7 +69,10 @@ namespace contur {
         PCB &operator=(const PCB &) = delete;
 
         // Movable
+        /// @brief Move-constructs PCB state.
         PCB(PCB &&) noexcept;
+
+        /// @brief Move-assigns PCB state.
         PCB &operator=(PCB &&) noexcept;
 
         /// @brief Returns the unique process ID.
