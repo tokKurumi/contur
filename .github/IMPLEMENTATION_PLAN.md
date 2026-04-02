@@ -398,15 +398,15 @@ Follow steps in order; do not skip test gates.
 
 | # | Task | Header | Source | Test | Done |
 |---|---|---|---|---|---|
-| 12.1 | `trace_event.h` — `TraceEvent` struct (timestamp, subsystem, operation, details, depth) | `tracing/trace_event.h` | — | — | |
-| 12.2 | `trace_sink.h` — `ITraceSink` interface (write) | `tracing/trace_sink.h` | — | — | |
-| 12.3 | `i_tracer.h` — `ITracer` interface (trace, pushScope, popScope, currentDepth, clock) | `tracing/i_tracer.h` | — | — | |
-| 12.4 | `tracer.h` — `Tracer` (PIMPL; active implementation writing to ITraceSink) | `tracing/tracer.h` | `tracing/tracer.cpp` | `test_tracer.cpp` | |
-| 12.5 | `null_tracer.h` — `NullTracer` (inline no-ops) | `tracing/null_tracer.h` | — | — | |
-| 12.6 | `trace_scope.h` — `TraceScope` RAII guard + `CONTUR_TRACE_SCOPE` / `CONTUR_TRACE` macros | `tracing/trace_scope.h` | — | — | |
-| 12.7 | Sink implementations: `ConsoleSink`, `FileSink`, `BufferSink` | `tracing/console_sink.h` + 2 | `tracing/console_sink.cpp` + 2 | `test_buffer_sink.cpp` | |
-| 12.8 | CMake: `CONTUR2_ENABLE_TRACING` option, `CONTUR_TRACE_ENABLED` define | `src/CMakeLists.txt` (update) | — | — | |
-| 12.9 | Wire tracer into KernelBuilder and inject into all subsystems | update `kernel_builder.cpp` | — | — | |
+| 12.1 | `trace_event.h` — `TraceEvent` struct (timestamp, subsystem, operation, details, depth) | `tracing/trace_event.h` | — | — | ✅ |
+| 12.2 | `trace_sink.h` — `ITraceSink` interface (write) | `tracing/trace_sink.h` | — | — | ✅ |
+| 12.3 | `i_tracer.h` — `ITracer` interface (trace, pushScope, popScope, currentDepth, clock) | `tracing/i_tracer.h` | — | — | ✅ |
+| 12.4 | `tracer.h` — `Tracer` (PIMPL; active implementation writing to ITraceSink) | `tracing/tracer.h` | `tracing/tracer.cpp` | `test_tracer.cpp` | ✅ |
+| 12.5 | `null_tracer.h` — `NullTracer` (inline no-ops) | `tracing/null_tracer.h` | — | — | ✅ |
+| 12.6 | `trace_scope.h` — `TraceScope` RAII guard + `CONTUR_TRACE_SCOPE` / `CONTUR_TRACE` macros | `tracing/trace_scope.h` | — | — | ✅ |
+| 12.7 | Sink implementations: `ConsoleSink`, `FileSink`, `BufferSink` | `tracing/console_sink.h` + 2 | `tracing/console_sink.cpp` + 2 | `test_buffer_sink.cpp` | ✅ |
+| 12.8 | CMake: `CONTUR2_ENABLE_TRACING` option, `CONTUR_TRACE_ENABLED` define | `src/CMakeLists.txt` (update) | — | — | ✅ |
+| 12.9 | Wire tracer into KernelBuilder and inject into all subsystems | update `kernel_builder.cpp` | — | — | ✅ |
 
 ### Acceptance Criteria
 - Tracer + BufferSink: emit 3 nested scoped events → buffer contains 3 events with depth 0,1,2
@@ -557,7 +557,7 @@ Follow steps in order; do not skip test gates.
 
 ---
 
-## Test Statistics (Phases 0–11)
+## Test Statistics (Phases 0–12)
 
 | Phase | Test File | Test Suites | Tests |
 |---|---|---|---|
@@ -599,7 +599,7 @@ Follow steps in order; do not skip test gates.
 | 8 | `test_syscall_table.cpp` | SyscallTableTest | 6 |
 | 9 | `test_block_allocator.cpp` | BlockAllocatorTest | 6 |
 | 9 | `test_simple_fs.cpp` | SimpleFSTest | 8 |
-| 10 | `test_kernel_builder.cpp` | KernelBuilderTest | 13 |
+| 10 | `test_kernel_builder.cpp` | KernelBuilderTest | 14 |
 | 10 | `test_kernel_api.cpp` | KernelApiIntegrationTest | 4 |
 | 11 | `test_threading_config.cpp` | ThreadingConfigTest | 5 |
 | 11 | `test_dispatcher_pool.cpp` | DispatcherPoolTest | 7 |
@@ -611,7 +611,9 @@ Follow steps in order; do not skip test gates.
 | 11 | `test_deadlock_detector_concurrent.cpp` | DeadlockDetectorConcurrentTest | 4 |
 | 11 | `test_deterministic_multithread.cpp` | DeterministicMultithreadIntegrationTest | 1 |
 | 11 | `test_tracer_concurrent.cpp` | TracerConcurrentTest | 2 |
-| | | **60 suites** | **527** |
+| 12 | `test_buffer_sink.cpp` | BufferSinkTest | 2 |
+| 12 | `test_tracer.cpp` | TracerTest | 3 |
+| | | **62 suites** | **533** |
 
 ---
 
@@ -628,14 +630,14 @@ Phase 6:  Scheduling               ███████████████
 Phase 7:  Dispatch + Sync          ████████████████     ✅  (8 tasks,  64 tests)
 Phase 8:  IPC + Syscalls           ████████████         ✅  (8 tasks,  33 tests)
 Phase 9:  File System              ████████████         ✅  (6 tasks,  14 tests)
-Phase 10: Kernel                   ████████             ✅  (4 tasks,  17 tests)
+Phase 10: Kernel                   ████████             ✅  (4 tasks,  18 tests)
 Phase 11: Host MT Runtime          ████████████         ✅  (13 tasks, 39 tests)
-Phase 12: Tracing                  ████████
+Phase 12: Tracing                  ████████             ✅  (9 tasks,  6 tests)
 Phase 13: TUI                      ████████████
 Phase 14: Demos + CLI              ████████████████
 Phase 15: Native Engine            ████████
 Phase 16: Tests                    ████████████
 Phase 17: Docs + CI                ████████
 
-Total: 527 tests passing (Phases 0–11)
+Total: 533 tests passing (Phases 0–12)
 ```
