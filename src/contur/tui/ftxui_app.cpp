@@ -32,6 +32,8 @@ namespace contur {
 
     namespace {
 
+        constexpr std::size_t kVisibleKernelLogRows = 5;
+
         Color stateColorApp(ProcessState s)
         {
             switch (s)
@@ -328,6 +330,36 @@ namespace contur {
                    border;
         }
 
+        // Logs panel
+        Element buildKernelLogsPanel(const std::vector<std::string> &lines, std::size_t offsetFromBottom)
+        {
+            Elements rows;
+            if (lines.empty())
+            {
+                rows.push_back(text("  (no kernel logs yet)") | dim);
+                return window(text("- KERNEL LOGS "), vbox(std::move(rows))) | xflex;
+            }
+
+            const std::size_t total = lines.size();
+            const std::size_t maxOffset = total > kVisibleKernelLogRows ? total - kVisibleKernelLogRows : 0;
+            const std::size_t offset = std::min(offsetFromBottom, maxOffset);
+            const std::size_t start = total > kVisibleKernelLogRows ? (total - kVisibleKernelLogRows - offset) : 0;
+            const std::size_t end = std::min(total, start + kVisibleKernelLogRows);
+
+            for (std::size_t i = start; i < end; ++i)
+            {
+                rows.push_back(text(" " + lines[i]) | color(Color::GrayLight));
+            }
+
+            std::string title = "- KERNEL LOGS " + std::to_string(end) + "/" + std::to_string(total);
+            if (offset > 0)
+            {
+                title += " [SCROLLED]";
+            }
+
+            return window(text(title), vbox(std::move(rows))) | xflex;
+        }
+
         // Controls footer
         Element buildFooter()
         {
@@ -341,6 +373,8 @@ namespace contur {
                        headerBlock("[t] Tick") | color(Color::White),
                        separator(),
                        headerBlock("[+][-] Speed") | color(Color::Yellow),
+                       separator(),
+                       headerBlock("[Up][Down] Logs") | color(Color::GrayLight),
                        separator(),
                        headerBlock("[r] Resume") | color(Color::Magenta),
                        separator(),
@@ -358,6 +392,7 @@ namespace contur {
         ITuiController &controller;
         FtxuiAppConfig cfg;
         std::uint32_t currentIntervalMs;
+        std::size_t kernelLogOffsetFromBottom = 0;
         std::atomic<bool> running{false};
 
         Impl(ITuiController &ctrl, FtxuiAppConfig c)
@@ -406,12 +441,49 @@ namespace contur {
             }
         }
 
+        [[nodiscard]] std::vector<std::string> kernelLogs() const
+        {
+            if (!cfg.logProvider)
+            {
+                return {};
+            }
+            return cfg.logProvider();
+        }
+
+        void normalizeKernelLogOffset(std::size_t totalLogLines)
+        {
+            const std::size_t maxOffset =
+                totalLogLines > kVisibleKernelLogRows ? totalLogLines - kVisibleKernelLogRows : 0;
+            kernelLogOffsetFromBottom = std::min(kernelLogOffsetFromBottom, maxOffset);
+        }
+
+        void scrollKernelLogsUp()
+        {
+            const std::size_t totalLogLines = kernelLogs().size();
+            const std::size_t maxOffset =
+                totalLogLines > kVisibleKernelLogRows ? totalLogLines - kVisibleKernelLogRows : 0;
+            if (kernelLogOffsetFromBottom < maxOffset)
+            {
+                ++kernelLogOffsetFromBottom;
+            }
+        }
+
+        void scrollKernelLogsDown()
+        {
+            if (kernelLogOffsetFromBottom > 0)
+            {
+                --kernelLogOffsetFromBottom;
+            }
+        }
+
         Element buildFrame()
         {
             const auto &snap = controller.current();
             auto state = controller.state();
             std::size_t cursor = controller.historyCursor();
             std::size_t total = controller.historySize();
+            auto logs = kernelLogs();
+            normalizeKernelLogOffset(logs.size());
 
             return vbox({
                 buildHeaderBar(snap, state, currentIntervalMs),
@@ -420,6 +492,7 @@ namespace contur {
                     buildSchedulerPanel(snap),
                     buildMemoryPanel(snap),
                 }) | flex,
+                buildKernelLogsPanel(logs, kernelLogOffsetFromBottom),
                 buildHistoryBar(cursor, total),
                 buildFooter(),
             });
@@ -490,6 +563,16 @@ namespace contur {
             if (e == Event::Character('-') || e == Event::Character('_'))
             {
                 imp.speedDown();
+                return true;
+            }
+            if (e == Event::ArrowUp || e == Event::Character('k'))
+            {
+                imp.scrollKernelLogsUp();
+                return true;
+            }
+            if (e == Event::ArrowDown || e == Event::Character('j'))
+            {
+                imp.scrollKernelLogsDown();
                 return true;
             }
             if (e == Event::Character('r'))

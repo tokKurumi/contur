@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <iostream>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "contur/core/clock.h"
@@ -31,12 +32,41 @@
 #include "contur/scheduling/round_robin_policy.h"
 #include "contur/scheduling/scheduler.h"
 #include "contur/syscall/syscall_table.h"
-#include "contur/tracing/null_tracer.h"
+#include "contur/tracing/buffer_sink.h"
+#include "contur/tracing/trace_level.h"
+#include "contur/tracing/trace_sink.h"
+#include "contur/tracing/tracer.h"
 #include "contur/tui/ftxui_app.h"
 #include "contur/tui/i_kernel_read_model.h"
 #include "contur/tui/i_tui_controller.h"
 
 using namespace contur;
+
+namespace {
+
+    class SharedBufferTraceSink final : public ITraceSink
+    {
+        public:
+        explicit SharedBufferTraceSink(std::shared_ptr<BufferSink> sink)
+            : sink_(std::move(sink))
+        {}
+
+        void write(const TraceEvent &event) override
+        {
+            sink_->write(event);
+        }
+
+        private:
+        std::shared_ptr<BufferSink> sink_;
+    };
+
+    struct DemoKernelBuild
+    {
+        Result<std::unique_ptr<IKernel>> kernelResult;
+        std::shared_ptr<BufferSink> traceSink;
+    };
+
+} // namespace
 
 static std::vector<Block> makeProgramAddOnePlusOne()
 {
@@ -84,10 +114,56 @@ static std::vector<Block> makeProgramLongNop(std::size_t nops)
     return code;
 }
 
-static Result<std::unique_ptr<IKernel>> buildDemoKernel()
+static std::string formatTraceEventLine(const TraceEvent &event)
 {
+    std::string line = "[" + std::to_string(event.timestamp) + "]";
+    line += "[" + std::string(traceLevelToString(event.level)) + "] ";
+    line += event.subsystem + "." + event.operation;
+    if (!event.details.empty())
+    {
+        line += " :: " + event.details;
+    }
+    return line;
+}
+
+static std::vector<std::string> formatKernelLogs(const BufferSink &sink)
+{
+    const auto events = sink.snapshot();
+    std::vector<std::string> lines;
+    lines.reserve(events.size());
+    for (const auto &event : events)
+    {
+        lines.push_back(formatTraceEventLine(event));
+    }
+
+    return lines;
+}
+
+static std::string renderKernelTraceDump(const BufferSink &sink)
+{
+    const auto events = sink.snapshot();
+
+    std::string dump;
+    dump.reserve(events.size() * 64 + 128);
+    dump += "\n=== Kernel Trace Dump ===\n";
+    for (const auto &event : events)
+    {
+        dump += formatTraceEventLine(event);
+        dump += '\n';
+    }
+    dump += "=== End Kernel Trace Dump (";
+    dump += std::to_string(events.size());
+    dump += " entries) ===\n";
+    return dump;
+}
+
+static DemoKernelBuild buildDemoKernel()
+{
+    auto traceSink = std::make_shared<BufferSink>();
+
     auto clock = std::make_unique<SimulationClock>();
-    auto tracer = std::make_unique<NullTracer>(*clock);
+    auto tracerSink = std::make_unique<SharedBufferTraceSink>(traceSink);
+    auto tracer = std::make_unique<Tracer>(std::move(tracerSink), *clock);
     auto memory = std::make_unique<PhysicalMemory>(64);
     auto replacement = std::make_unique<FifoReplacement>();
     auto mmu = std::make_unique<Mmu>(*memory, std::move(replacement), *tracer);
@@ -101,21 +177,23 @@ static Result<std::unique_ptr<IKernel>> buildDemoKernel()
     auto ipc = std::make_unique<IpcManager>();
     auto syscallTable = std::make_unique<SyscallTable>();
 
-    return KernelBuilder{}
-        .withClock(std::move(clock))
-        .withMemory(std::move(memory))
-        .withMmu(std::move(mmu))
-        .withVirtualMemory(std::move(virtualMem))
-        .withCpu(std::move(cpu))
-        .withExecutionEngine(std::move(engine))
-        .withScheduler(std::move(scheduler))
-        .withDispatcher(std::move(dispatcher))
-        .withTracer(std::move(tracer))
-        .withFileSystem(std::move(fs))
-        .withIpcManager(std::move(ipc))
-        .withSyscallTable(std::move(syscallTable))
-        .withDefaultTickBudget(1)
-        .build();
+    auto kernelResult = KernelBuilder{}
+                            .withClock(std::move(clock))
+                            .withMemory(std::move(memory))
+                            .withMmu(std::move(mmu))
+                            .withVirtualMemory(std::move(virtualMem))
+                            .withCpu(std::move(cpu))
+                            .withExecutionEngine(std::move(engine))
+                            .withScheduler(std::move(scheduler))
+                            .withDispatcher(std::move(dispatcher))
+                            .withTracer(std::move(tracer))
+                            .withFileSystem(std::move(fs))
+                            .withIpcManager(std::move(ipc))
+                            .withSyscallTable(std::move(syscallTable))
+                            .withDefaultTickBudget(1)
+                            .build();
+
+    return DemoKernelBuild{std::move(kernelResult), std::move(traceSink)};
 }
 
 static void spawnDemoProcesses(IKernel &kernel)
@@ -150,14 +228,14 @@ static void spawnDemoProcesses(IKernel &kernel)
 int main()
 {
     // Build kernel
-    auto kernelResult = buildDemoKernel();
-    if (kernelResult.isError())
+    auto build = buildDemoKernel();
+    if (build.kernelResult.isError())
     {
         std::cerr << "Failed to build kernel\n";
         return 1;
     }
 
-    auto kernel = std::move(kernelResult).value();
+    auto kernel = std::move(build.kernelResult).value();
 
     // Spawn demo processes
     spawnDemoProcesses(*kernel);
@@ -177,10 +255,13 @@ int main()
             .frameIntervalMs = 33,
             .minIntervalMs = 50,
             .maxIntervalMs = 2000,
+            .logProvider = [traceSink = build.traceSink] { return formatKernelLogs(*traceSink); },
         }
     );
 
     app.run();
+
+    std::cout << renderKernelTraceDump(*build.traceSink);
 
     return 0;
 }

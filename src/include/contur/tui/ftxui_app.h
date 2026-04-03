@@ -5,18 +5,6 @@
 /// It wires together an ITuiController with FTXUI to produce a responsive,
 /// full-screen OS kernel visualiser.
 ///
-/// Layout:
-/// ┌──────────────────────────────────────────────────────────────────┐
-/// │  CONTUR2 OS Simulator │ Tick: N │ Policy: X  │ [state]           │
-/// ├───────────────────────┬──────────────────────┬───────────────────┤
-/// │   PROCESSES           │   SCHEDULER          │   MEMORY          │
-/// │   …                   │   …                  │   …               │
-/// ├───────────────────────┴──────────────────────┴───────────────────┤
-/// │ History  [=====>                    ]  cursor / total            │
-/// ├──────────────────────────────────────────────────────────────────┤
-/// │ [Space] Play/Pause  [←][→] Seek  [t] Tick  [+][-] Speed  [q] Q   │
-/// └──────────────────────────────────────────────────────────────────┘
-///
 /// Keyboard map:
 ///   Space / p      — toggle Play / Pause
 ///   t / n          — single manual Tick
@@ -26,6 +14,8 @@
 ///   Shift+→/ L     — seek forward  10 steps
 ///   +              — increase autoplay speed (halve interval)
 ///   -              — decrease autoplay speed (double interval)
+///   ↑ / k          — scroll kernel logs up
+///   ↓ / j          — scroll kernel logs down
 ///   r              — resume autoplay from latest snapshot
 ///   s              — stop autoplay
 ///   q / Escape     — quit
@@ -34,7 +24,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "contur/tui/i_tui_controller.h"
 
@@ -57,6 +50,9 @@ namespace contur {
 
         /// @brief Maximum autoplay interval (slowest speed).
         std::uint32_t maxIntervalMs = 2000;
+
+        /// @brief Optional callback returning formatted kernel log lines.
+        std::function<std::vector<std::string>()> logProvider;
     };
 
     /// @brief Full interactive TUI application using FTXUI ScreenInteractive.
