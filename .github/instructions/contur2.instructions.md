@@ -1203,21 +1203,88 @@ The FS operates on a simulated disk (a `std::vector<std::array<std::byte, BLOCK_
 
 ### 14. Terminal UI / Visualization
 
-An ANSI-based terminal dashboard for real-time visualization of OS state:
+Terminal UI is an **external module** layered on top of the kernel API.
+
+#### Architectural boundary (mandatory)
+
+- UI is not part of kernel business/runtime logic.
+- Kernel remains headless and testable without UI dependencies.
+- UI consumes read-only snapshots/adapters and renders them.
+- UI-owned history supports playback navigation only.
+- Snapshot rewind does **not** imply kernel state rollback.
+
+#### MVC direction (contracts first)
+
+- **Model**: immutable UI DTO snapshots (processes, queues, memory, tick metadata)
+- **Controller**: tick/autoplay/pause/seek commands with step-size `N`
+- **View**: renderer interfaces and panel contracts (backend agnostic)
+
+Approved naming for Phase 13 T1-T3:
+
+- T1 (`tui_models.h`): `TuiProcessSnapshot`, `TuiSchedulerSnapshot`, `TuiMemorySnapshot`, `TuiSnapshot`, `TuiHistoryEntry`
+- T2 (`tui_commands.h`): `TuiCommandKind`, `TuiCommand`, `TuiPlaybackConfig`
+- T3 (`i_kernel_read_model.h` + `kernel_read_model.cpp`): `IKernelReadModel`, `KernelReadModel`, `captureSnapshot()`
+
+Naming rules:
+
+- Use `Tui` prefix for UI-facing DTO/contracts.
+- Use `*Snapshot` for immutable read-only state values.
+- Keep kernel-facing `KernelSnapshot` type separate from TUI DTOs.
+- Read-model adapter names should include `ReadModel` and remain side-effect free.
+
+Reference contract shape:
 
 ```cpp
+enum class TuiCommandKind : std::uint8_t {
+    Tick,
+    AutoPlayStart,
+    AutoPlayStop,
+    Pause,
+    SeekBackward,
+    SeekForward,
+};
+
+struct TuiCommand {
+    TuiCommandKind kind{};
+    std::size_t step = 1;                     // support stepping/seek by N
+    std::uint32_t intervalMs = 100;           // autoplay cadence
+};
+
+struct TuiPlaybackConfig {
+    std::uint32_t intervalMs = 100;
+    std::size_t step = 1;
+};
+
+struct TuiSnapshot {
+    Tick currentTick = 0;
+    std::vector<ProcessInfo> processes;
+    SchedulerSnapshot scheduler;
+    MemoryMapSnapshot memory;
+};
+
+struct TuiHistoryEntry {
+    std::size_t sequence = 0;
+    TuiSnapshot snapshot;
+};
+
+class ITuiController {
+public:
+    virtual ~ITuiController() = default;
+    virtual Result<void> dispatch(const TuiCommand& command) = 0;
+    [[nodiscard]] virtual const TuiSnapshot& current() const = 0;
+};
+
+class IKernelReadModel {
+public:
+    virtual ~IKernelReadModel() = default;
+    [[nodiscard]] virtual Result<TuiSnapshot> captureSnapshot() const = 0;
+};
+
 class IRenderer {
 public:
     virtual ~IRenderer() = default;
-    virtual void render(const KernelSnapshot& snapshot) = 0;
+    virtual Result<void> render(const TuiSnapshot& snapshot) = 0;
     virtual void clear() = 0;
-};
-
-struct KernelSnapshot {
-    std::vector<ProcessInfo>     processes;     // pid, name, state, priority
-    MemoryMapSnapshot            memoryMap;     // frame allocation, page tables
-    SchedulerSnapshot            scheduler;     // ready/blocked/running queues
-    Tick                         currentTick;
 };
 ```
 
@@ -1226,9 +1293,10 @@ struct KernelSnapshot {
 | `ProcessView` | Table of processes with state, priority, CPU time; optional state-transition diagram |
 | `MemoryMapView` | Physical frames as a grid; color-coded by owning process; swap status indicators |
 | `SchedulerView` | Ready queue contents; Gantt-chart-style timeline of past scheduling decisions |
-| `Dashboard` | Composite layout combining all views; refreshes after each simulation tick |
+| `Dashboard` | Composite layout combining all views; refreshes after controller tick events |
 
-All rendering uses ANSI escape codes via `ansi.h` helpers (cursor movement, colors, box drawing). No external TUI library dependency — pure standard C++ with terminal escape sequences.
+Renderer backend is intentionally pluggable (ANSI/FTXUI/ncurses/etc.).
+Do not bind controller/model contracts to a concrete TUI library.
 
 ---
 
@@ -1698,7 +1766,7 @@ Recommended implementation sequence (bottom-up, each step builds on the previous
 | **Phase 10: Kernel** | `kernel/` (IKernel, Kernel, KernelBuilder) | Top-level API, DI wiring |
 | **Phase 10.5: Host Multithreading Runtime** | `dispatch/`, `scheduling/`, `sync/`, `kernel/` | Real host-thread runtime for N>=1, per-core queues + work stealing, deterministic mode, dual deadlock analysis |
 | **Phase 11: Tracing** | `tracing/` (ITracer, Tracer, NullTracer, TraceScope, sinks) | Hierarchical call tracing, compile-time toggle |
-| **Phase 12: TUI** | `tui/` (IRenderer, Dashboard, ProcessView, MemoryMapView, SchedulerView) | Terminal visualization |
+| **Phase 12: TUI** | `tui/` (models, controller, history, `IRenderer`, panel contracts) | External MVC module with contracts-first playback/navigation |
 | **Phase 13: Demos** | `demos/` (Stepper, all demo functions) + `app/main.cpp` | Interactive CLI; step-by-step in Debug, continuous in Release |
 | **Phase 14: Native** | `execution/NativeEngine` | Real process management on host OS |
 | **Phase 15: Tests** | `tests/unit/` + `tests/integration/` | Full test coverage |

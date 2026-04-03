@@ -418,25 +418,100 @@ Follow steps in order; do not skip test gates.
 
 ## Phase 13: Terminal UI (`tui/`)
 
-**Goal**: ANSI-based real-time visualization of OS state: processes, memory, scheduler queues.
+**Goal**: Define and implement an **external** UI module (MVC) with contracts-first architecture, controller state
+machine, history navigation, and renderer interfaces. View rendering implementation is intentionally deferred.
 
-**Dependencies**: Phase 10 (Kernel snapshot API)
+**Dependencies**: Phase 10 (Kernel API), Phase 11 (scheduler lane snapshots), Phase 12 (optional trace metadata)
+
+### Non-Negotiable Boundaries
+
+- UI is **not** part of kernel runtime logic; it is an external consumer module.
+- Kernel remains headless and independently testable without TUI linkage.
+- UI receives read-only data snapshots/adapters from kernel-facing interfaces.
+- UI history is owned by UI controller/store; kernel does not persist UI playback history.
+- Rewind/forward operates on UI history only; it does **not** roll back kernel state.
+- Any future renderer backend (ANSI/FTXUI/ncurses/etc.) must implement view interfaces only.
+
+### MVC Scope For This Phase
+
+- **Model**: immutable UI snapshot contracts + history records + read-model adapter from kernel state.
+- **Controller**: command-driven state machine (`tick`, autoplay start/stop, pause, seek backward/forward by N).
+- **View**: interfaces only (`IRenderer` + view contracts). No concrete rendering implementation in this phase.
+
+### Tick/Playback Semantics (Contract Level)
+
+- `tick(n)` advances kernel by `n` dispatch cycles and appends snapshots to history.
+- `autoplay(intervalMs, strideN)` repeatedly performs `tick(strideN)` every interval until paused/stopped.
+- `pause()` freezes autoplay without mutating kernel state.
+- `seekBackward(n)` and `seekForward(n)` move the UI cursor over stored history entries.
+- Seeking does not execute kernel logic; only cursor navigation over existing snapshots.
+
+### Data Expansion Requirements
+
+Phase 13 must extend UI-facing snapshot contracts beyond aggregate counts so later views can render without
+kernel coupling. Required fields include (at minimum):
+
+- Process list: pid, name, state, priority base/effective, cpu time, lane ownership (if available)
+- Scheduler queues: ready/blocked/running snapshots + per-lane ready queues
+- Memory summary: virtual slots (total/free), frames (total/free), optional frame ownership map hook
+- Tick metadata: current tick, selected policy name, deterministic-mode metadata (read-only)
+- Optional trace tail reference for timeline correlation (debug/diagnostics)
+
+### Approved Naming (T1-T3)
+
+The following contract names are frozen for Phase 13 T1-T3 implementation:
+
+| Scope | File | Approved names |
+|---|---|---|
+| T1 Model DTOs | `src/include/contur/tui/tui_models.h` | `TuiProcessSnapshot`, `TuiSchedulerSnapshot`, `TuiMemorySnapshot`, `TuiSnapshot`, `TuiHistoryEntry` |
+| T2 Controller commands | `src/include/contur/tui/tui_commands.h` | `TuiCommandKind`, `TuiCommand`, `TuiPlaybackConfig` |
+| T3 Read-model adapter | `src/include/contur/tui/i_kernel_read_model.h`, `src/contur/tui/kernel_read_model.cpp` | `IKernelReadModel`, `KernelReadModel`, `captureSnapshot()` |
+
+Naming constraints:
+
+- All TUI DTO/interface types use `Tui` prefix to avoid collision with kernel domain types.
+- `*Snapshot` suffix is used only for immutable read-only state objects.
+- `KernelSnapshot` remains kernel-facing and must not be renamed by TUI layer.
+- `KernelReadModel` is adapter-only and does not own simulation state.
+
+### Implementation Blueprint (Contracts First)
+
+| Step | Files | What to add/fix | Test gate |
+|---|---|---|---|
+| T1 | `src/include/contur/tui/tui_models.h` | Define immutable UI DTOs: `TuiProcessSnapshot`, `TuiSchedulerSnapshot`, `TuiMemorySnapshot`, `TuiSnapshot`, `TuiHistoryEntry`. | DTO compile checks + serialization/format unit checks |
+| T2 | `src/include/contur/tui/tui_commands.h` | Define controller command contracts: `TuiCommandKind`, `TuiCommand`, `TuiPlaybackConfig` (tick/autoplay/pause/seek with stride `N`). | Command validation tests |
+| T3 | `src/include/contur/tui/i_kernel_read_model.h`, `src/contur/tui/kernel_read_model.cpp` | Add read-model adapter `IKernelReadModel` + `KernelReadModel` with `captureSnapshot()` mapping kernel/scheduler/memory data into `TuiSnapshot`. | `test_tui_read_model.cpp` |
+| T4 | `src/include/contur/tui/history_buffer.h`, `src/contur/tui/history_buffer.cpp` | Add bounded ring buffer with cursor semantics for backward/forward navigation over snapshot history. | `test_tui_history_buffer.cpp` |
+| T5 | `src/include/contur/tui/i_tui_controller.h`, `src/contur/tui/tui_controller.cpp` | Implement MVC controller state machine (Idle/Playing/Paused), tick orchestration, autoplay timing contract, seek APIs. | `test_tui_controller.cpp` |
+| T6 | `src/include/contur/tui/i_renderer.h` + view contracts | Keep renderer/view interfaces backend-agnostic (`render(viewModel)`, `clear()`, panel contracts). | Interface compile checks |
+| T7 | `src/tests/integration/test_tui_tick_navigation.cpp` | Integration test for `tick(n)`, autoplay pause/resume, and seek behavior against captured history. | Integration gate |
+| T8 | `.github/IMPLEMENTATION_PLAN.md`, `.github/instructions/contur2.instructions.md` | Keep architecture notes synchronized (UI external module, no kernel rewind semantics). | Doc review gate |
 
 ### Tasks
 
 | # | Task | Header | Source | Test | Done |
 |---|---|---|---|---|---|
-| 13.1 | `ansi.h` — ANSI escape code helpers (cursor move, colors, box drawing, clear screen) | `tui/ansi.h` | — | — | |
-| 13.2 | `i_renderer.h` — `IRenderer` interface (render, clear) | `tui/i_renderer.h` | — | — | |
-| 13.3 | `process_view.h` — `ProcessView` (table: PID, name, state, priority, CPU time; color by state) | `tui/process_view.h` | `tui/process_view.cpp` | — | |
-| 13.4 | `memory_map_view.h` — `MemoryMapView` (grid of physical frames; color by owning process) | `tui/memory_map_view.h` | `tui/memory_map_view.cpp` | — | |
-| 13.5 | `scheduler_view.h` — `SchedulerView` (ready/blocked queues; Gantt chart timeline) | `tui/scheduler_view.h` | `tui/scheduler_view.cpp` | — | |
-| 13.6 | `dashboard.h` — `Dashboard` (composite layout; arranges views; refreshes on tick) | `tui/dashboard.h` | `tui/dashboard.cpp` | — | |
+| 13.1 | Define UI model contracts (`TuiProcessSnapshot`, `TuiSchedulerSnapshot`, `TuiMemorySnapshot`, `TuiSnapshot`, `TuiHistoryEntry`) | `tui/tui_models.h` | — | `test_tui_models.cpp` | |
+| 13.2 | Define controller command contracts (`TuiCommandKind`, `TuiCommand`, `TuiPlaybackConfig`) with step size `N` and autoplay interval | `tui/tui_commands.h` | — | `test_tui_commands.cpp` | |
+| 13.3 | Define kernel read-model interface (`IKernelReadModel`) and adapter naming (`KernelReadModel`, `captureSnapshot()`) | `tui/i_kernel_read_model.h` | — | — | |
+| 13.4 | Implement read-model adapter from kernel/scheduler/memory snapshots | — | `tui/kernel_read_model.cpp` | `test_tui_read_model.cpp` | |
+| 13.5 | Implement bounded UI history buffer with cursor and seek-by-`N` | `tui/history_buffer.h` | `tui/history_buffer.cpp` | `test_tui_history_buffer.cpp` | |
+| 13.6 | Define TUI controller interface (`ITuiController`) | `tui/i_tui_controller.h` | — | — | |
+| 13.7 | Implement controller state machine: `tick(n)`, autoplay, pause, `seekBackward(n)`, `seekForward(n)` | — | `tui/tui_controller.cpp` | `test_tui_controller.cpp` | |
+| 13.8 | Define backend-agnostic renderer interface(s) for MVC view boundary | `tui/i_renderer.h` | — | `test_tui_renderer_contracts.cpp` | |
+| 13.9 | Define view contracts for process/scheduler/memory panels (interfaces only) | `tui/process_view.h`, `tui/scheduler_view.h`, `tui/memory_map_view.h`, `tui/dashboard.h` | — | compile-only contract checks | |
+| 13.10 | Add integration tests for tick playback and history navigation semantics | — | — | `test_tui_tick_navigation.cpp` | |
+| 13.11 | Document library strategy (defer backend choice, keep adapter seam) | `.github/IMPLEMENTATION_PLAN.md` | — | review | ✅ |
+| 13.12 | Document strict boundary: UI external module, no kernel rollback from snapshot | `.github/IMPLEMENTATION_PLAN.md`, `.github/instructions/contur2.instructions.md` | — | review | ✅ |
 
 ### Acceptance Criteria
-- ANSI helpers produce correct escape sequences
-- Each view renders without crashing given a valid KernelSnapshot
-- Dashboard composes all views into a terminal-sized layout
+
+- UI architecture is documented and enforced as external to kernel (no kernel-side UI coupling).
+- Controller contracts support `tick(n)`, autoplay every `N` ms with stride `n`, pause, seek backward/forward by `n`.
+- History navigation is explicit UI-only playback; kernel rollback is not implemented and not implied by API.
+- Extended UI snapshot contracts exist for processes, queues, and memory-level data.
+- Renderer/view interfaces compile independently from any concrete backend implementation.
+- Unit + integration tests validate controller transitions, playback loop behavior, and history cursor semantics.
 
 ---
 
