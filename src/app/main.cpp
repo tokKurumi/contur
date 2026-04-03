@@ -114,7 +114,7 @@ static Result<std::unique_ptr<IKernel>> buildDemoKernel()
         .withFileSystem(std::move(fs))
         .withIpcManager(std::move(ipc))
         .withSyscallTable(std::move(syscallTable))
-        .withDefaultTickBudget(4)
+        .withDefaultTickBudget(1)
         .build();
 }
 
@@ -161,9 +161,6 @@ int main()
 
     // Spawn demo processes
     spawnDemoProcesses(*kernel);
-
-    // Advance a few ticks so the scheduler has something to show on first render
-    (void)kernel->runForTicks(3);
 
     // Wire up TUI stack
     KernelDiagnostics diagnostics(*kernel);
