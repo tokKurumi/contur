@@ -488,6 +488,21 @@ Naming constraints:
 | T7 | `src/tests/integration/test_tui_tick_navigation.cpp` | Integration test for `tick(n)`, autoplay pause/resume, and seek behavior against captured history. | Integration gate |
 | T8 | `.github/IMPLEMENTATION_PLAN.md`, `.github/instructions/contur2.instructions.md` | Keep architecture notes synchronized (UI external module, no kernel rewind semantics). | Doc review gate |
 
+### CMake Targets
+
+| Target | Sources | Links to | Purpose |
+|---|---|---|---|
+| `contur2_lib` | `src/contur/**/*.cpp` (excludes `tui/`) | — | Kernel library; zero UI dependency |
+| `contur2_tui` | `src/contur/tui/*.cpp` | `contur2_lib` (PUBLIC) | TUI layer; future FTXUI backend goes here |
+| `contur2` (app) | `src/app/main.cpp` | `contur2_tui`, `contur2_demos` | Entry point; gets kernel transitively |
+| `contur2_unit_tests` | `src/tests/unit/` (excl. `test_tui*`) | `contur2_lib` | Kernel unit tests |
+| `contur2_tui_unit_tests` | `src/tests/unit/test_tui*.cpp` | `contur2_tui` | TUI unit tests |
+| `contur2_integration_tests` | `src/tests/integration/` (excl. `test_tui*`) | `contur2_lib` | Kernel integration tests |
+| `contur2_tui_integration_tests` | `src/tests/integration/test_tui*.cpp` | `contur2_tui` | TUI integration tests |
+
+> **Invariant**: `contur2_lib` must never link or `#include` anything from `contur2_tui`.
+> FTXUI (or any other renderer backend) is added as a dependency of `contur2_tui` only.
+
 ### Tasks
 
 | # | Task | Header | Source | Test | Done |

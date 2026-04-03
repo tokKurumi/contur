@@ -13,6 +13,7 @@
 
 #include "contur/kernel/i_kernel.h"
 #include "contur/kernel/kernel_diagnostics.h"
+#include "contur/sync/i_sync_primitive.h"
 
 using namespace contur;
 

@@ -1203,15 +1203,20 @@ The FS operates on a simulated disk (a `std::vector<std::array<std::byte, BLOCK_
 
 ### 14. Terminal UI / Visualization
 
-Terminal UI is an **external module** layered on top of the kernel API.
+Terminal UI is an **external module** layered on top of the kernel API and lives
+in a **separate CMake target** (`contur2_tui`).
 
 #### Architectural boundary (mandatory)
 
 - UI is not part of kernel business/runtime logic.
-- Kernel remains headless and testable without UI dependencies.
+- Kernel (`contur2_lib`) has zero dependency on any UI or renderer library.
+- `contur2_lib` must never link or `#include` anything from `contur2_tui`.
 - UI consumes read-only diagnostics contracts/adapters and renders them.
 - UI-owned history supports playback navigation only.
 - Snapshot rewind does **not** imply kernel state rollback.
+- FTXUI (or any other renderer backend) is a dependency of `contur2_tui` only.
+  Add it to the `contur2_tui` target and its own Conan requirements — never to the
+  kernel's build files.
 
 #### MVC direction (contracts first)
 
@@ -1433,6 +1438,35 @@ private:     // Impl pointer, helper methods
 
 ### CMake Configuration
 
+#### Target topology
+
+```
+contur2_lib  (kernel — no TUI)
+     │ PUBLIC
+     ▼
+contur2_tui  (TUI layer + future FTXUI backend)
+     │ PRIVATE / transitive
+     ▼
+contur2      (app executable)
+contur2_tui_unit_tests
+contur2_tui_integration_tests
+```
+
+`contur2_lib` is the kernel. It has **zero dependency on any UI library**.
+`contur2_tui` is the TUI layer. It links `contur2_lib` publicly so any consumer
+only needs to link `contur2_tui`.
+FTXUI (or any other renderer) must be added as a dependency of `contur2_tui` only —
+never of `contur2_lib`.
+
+#### Test target split
+
+| Target | Sources | Links |
+|---|---|---|
+| `contur2_unit_tests` | `tests/unit/` excl. `test_tui*` | `contur2_lib` |
+| `contur2_tui_unit_tests` | `tests/unit/test_tui*.cpp` | `contur2_tui` |
+| `contur2_integration_tests` | `tests/integration/` excl. `test_tui*` | `contur2_lib` |
+| `contur2_tui_integration_tests` | `tests/integration/test_tui*.cpp` | `contur2_tui` |
+
 ```cmake
 cmake_minimum_required(VERSION 3.20)
 project(contur2 LANGUAGES CXX)
@@ -1459,7 +1493,9 @@ if(CONTUR2_ENABLE_HOST_THREADS)
     find_package(Threads REQUIRED)
 endif()
 
-add_subdirectory(contur)    # contur2_lib static library
+# contur2_lib — kernel (sources in contur/ excluding contur/tui/)
+# contur2_tui — TUI layer (sources in contur/tui/ only, links contur2_lib publicly)
+add_subdirectory(contur)    # defines contur2_lib + contur2_tui
 add_subdirectory(demos)
 add_subdirectory(app)
 

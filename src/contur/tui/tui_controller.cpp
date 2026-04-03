@@ -1,11 +1,10 @@
 /// @file tui_controller.cpp
 /// @brief TuiController implementation.
 
-#include "contur/tui/i_tui_controller.h"
-
 #include <utility>
 
 #include "contur/tui/history_buffer.h"
+#include "contur/tui/i_tui_controller.h"
 
 namespace contur {
 

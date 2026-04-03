@@ -87,11 +87,7 @@ TEST(TuiTickNavigationIntegrationTest, SeekMovesUiCursorWithoutKernelRollback)
 
     KernelDiagnostics diagnostics(*kernel);
     KernelReadModel readModel(diagnostics);
-    TuiController controller(
-        readModel,
-        [&kernel](std::size_t step) { return kernel->runForTicks(step, 1); },
-        64
-    );
+    TuiController controller(readModel, [&kernel](std::size_t step) { return kernel->runForTicks(step, 1); }, 64);
 
     TuiCommand tick;
     tick.kind = TuiCommandKind::Tick;
@@ -136,11 +132,7 @@ TEST(TuiTickNavigationIntegrationTest, AutoplayStartPauseAndStopFollowContracts)
 
     KernelDiagnostics diagnostics(*kernel);
     KernelReadModel readModel(diagnostics);
-    TuiController controller(
-        readModel,
-        [&kernel](std::size_t step) { return kernel->runForTicks(step, 1); },
-        64
-    );
+    TuiController controller(readModel, [&kernel](std::size_t step) { return kernel->runForTicks(step, 1); }, 64);
 
     TuiCommand start;
     start.kind = TuiCommandKind::AutoPlayStart;

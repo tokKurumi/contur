@@ -1,9 +1,8 @@
 /// @file test_tui_read_model.cpp
 /// @brief Unit tests for KernelReadModel adapter.
 
-#include <utility>
-
 #include <optional>
+#include <utility>
 
 #include <gtest/gtest.h>
 

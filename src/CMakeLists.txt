@@ -12,11 +12,15 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CONTUR2_ENABLE_TRACING ON CACHE BOOL "" FORCE)
 endif()
 
-# contur2_lib static library
-# Collects all .cpp files under contur/ (mirrors include/contur/ headers)
+# contur2_lib — kernel static library (no TUI)
+# Collects all .cpp files under contur/ EXCEPT the tui/ subdirectory.
 file(GLOB_RECURSE CONTUR2_LIB_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/contur/*.cpp
 )
+
+# TUI is a separate layer — exclude it from the kernel library so that the
+# kernel has zero UI dependencies and can be used headlessly.
+list(FILTER CONTUR2_LIB_SOURCES EXCLUDE REGEX ".*/contur/tui/.*\\.cpp$")
 
 # If no .cpp files exist yet, create a header-only INTERFACE target temporarily,
 # then switch to STATIC once sources appear.
@@ -45,6 +49,33 @@ else()
     if(CONTUR2_ENABLE_TRACING)
         target_compile_definitions(contur2_lib INTERFACE CONTUR_TRACE_ENABLED)
     endif()
+endif()
+
+# contur2_tui — TUI layer (separate from kernel)
+#
+# Owns: tui/history_buffer, tui/kernel_read_model, tui/tui_controller and
+#       any future renderer backend (e.g. FTXUI).
+# Depends on: contur2_lib (kernel) via PUBLIC linkage so consumers only need
+#             to link contur2_tui and get the kernel transitively.
+# Rule: contur2_lib must NEVER link or include contur2_tui.
+file(GLOB_RECURSE CONTUR2_TUI_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/contur/tui/*.cpp
+)
+
+if(CONTUR2_TUI_SOURCES)
+    add_library(contur2_tui STATIC ${CONTUR2_TUI_SOURCES})
+    target_include_directories(contur2_tui PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    target_link_libraries(contur2_tui PUBLIC contur2_lib)
+else()
+    add_library(contur2_tui INTERFACE)
+    target_include_directories(contur2_tui INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    target_link_libraries(contur2_tui INTERFACE contur2_lib)
 endif()
 
 # Subdirectories

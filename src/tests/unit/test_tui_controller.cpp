@@ -61,15 +61,12 @@ TEST(TuiControllerTest, TickCommandAdvancesKernelAndAppendsHistory)
     std::size_t lastStep = 0;
 
     FakeKernelReadModel readModel(kernelTick);
-    TuiController controller(
-        readModel,
-        [&kernelTick, &tickCalls, &lastStep](std::size_t step) {
-            ++tickCalls;
-            lastStep = step;
-            kernelTick += step;
-            return Result<void>::ok();
-        }
-    );
+    TuiController controller(readModel, [&kernelTick, &tickCalls, &lastStep](std::size_t step) {
+        ++tickCalls;
+        lastStep = step;
+        kernelTick += step;
+        return Result<void>::ok();
+    });
 
     EXPECT_EQ(controller.historySize(), 1u);
     EXPECT_EQ(controller.current().currentTick, 0u);
@@ -94,13 +91,10 @@ TEST(TuiControllerTest, SeekBackwardAndForwardNavigatesHistoryOnly)
     Tick kernelTick = 0;
     FakeKernelReadModel readModel(kernelTick);
 
-    TuiController controller(
-        readModel,
-        [&kernelTick](std::size_t step) {
-            kernelTick += step;
-            return Result<void>::ok();
-        }
-    );
+    TuiController controller(readModel, [&kernelTick](std::size_t step) {
+        kernelTick += step;
+        return Result<void>::ok();
+    });
 
     TuiCommand tickCommand;
     tickCommand.kind = TuiCommandKind::Tick;
@@ -133,14 +127,11 @@ TEST(TuiControllerTest, AutoplayAdvancesByIntervalAndStride)
     std::size_t tickCalls = 0;
 
     FakeKernelReadModel readModel(kernelTick);
-    TuiController controller(
-        readModel,
-        [&kernelTick, &tickCalls](std::size_t step) {
-            ++tickCalls;
-            kernelTick += step;
-            return Result<void>::ok();
-        }
-    );
+    TuiController controller(readModel, [&kernelTick, &tickCalls](std::size_t step) {
+        ++tickCalls;
+        kernelTick += step;
+        return Result<void>::ok();
+    });
 
     TuiCommand start;
     start.kind = TuiCommandKind::AutoPlayStart;
@@ -175,13 +166,10 @@ TEST(TuiControllerTest, AutoPlayStopReturnsToIdle)
 {
     Tick kernelTick = 0;
     FakeKernelReadModel readModel(kernelTick);
-    TuiController controller(
-        readModel,
-        [&kernelTick](std::size_t step) {
-            kernelTick += step;
-            return Result<void>::ok();
-        }
-    );
+    TuiController controller(readModel, [&kernelTick](std::size_t step) {
+        kernelTick += step;
+        return Result<void>::ok();
+    });
 
     TuiCommand start;
     start.kind = TuiCommandKind::AutoPlayStart;
@@ -200,13 +188,10 @@ TEST(TuiControllerTest, InvalidCommandPayloadReturnsInvalidArgument)
 {
     Tick kernelTick = 0;
     FakeKernelReadModel readModel(kernelTick);
-    TuiController controller(
-        readModel,
-        [&kernelTick](std::size_t step) {
-            kernelTick += step;
-            return Result<void>::ok();
-        }
-    );
+    TuiController controller(readModel, [&kernelTick](std::size_t step) {
+        kernelTick += step;
+        return Result<void>::ok();
+    });
 
     TuiCommand invalidTick;
     invalidTick.kind = TuiCommandKind::Tick;
@@ -222,13 +207,10 @@ TEST(TuiControllerTest, TickPropagatesReadModelError)
 {
     Tick kernelTick = 0;
     FakeKernelReadModel readModel(kernelTick);
-    TuiController controller(
-        readModel,
-        [&kernelTick](std::size_t step) {
-            kernelTick += step;
-            return Result<void>::ok();
-        }
-    );
+    TuiController controller(readModel, [&kernelTick](std::size_t step) {
+        kernelTick += step;
+        return Result<void>::ok();
+    });
 
     readModel.setCaptureError(ErrorCode::InvalidState);
 

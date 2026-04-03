@@ -1,9 +1,9 @@
 /// @file test_tui_renderer_contracts.cpp
 /// @brief Compile/runtime contract checks for TUI renderer and panel interfaces.
 
-#include <gtest/gtest.h>
-
 #include <optional>
+
+#include <gtest/gtest.h>
 
 #include "contur/tui/dashboard.h"
 #include "contur/tui/i_renderer.h"
