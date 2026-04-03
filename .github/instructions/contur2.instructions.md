@@ -223,7 +223,7 @@ contur/
 | `src/include/contur/tui/` | **Terminal UI** — ANSI-based dashboard, process/memory/scheduler views |
 | `src/app/` | **Entry point** — `main.cpp` with interactive CLI menu |
 | `src/demos/` | **Demo functions** — one per subsystem, receives `DemoContext&`; step-by-step in Debug |
-| `src/tests/` | **Tests** — unit and integration tests (Google Test or Catch2) |
+| `src/tests/` | **Tests** — unit and integration tests (Google Test via Conan) |
 
 ### Layer Dependency Graph (Dependency Inversion Applied)
 
@@ -1471,6 +1471,34 @@ if(CONTUR2_BUILD_TESTS)
 endif()
 ```
 
+### Dependency Management (Conan, `conanfile.txt` only)
+
+Contur 2 uses Conan for third-party C/C++ dependencies.
+
+- Use `conanfile.txt` format for dependency declarations.
+- Do **not** use `conanfile.py` in this repository.
+
+`src/tests/conanfile.txt` baseline:
+
+```ini
+[requires]
+gtest/1.17.0
+
+[generators]
+CMakeDeps
+CMakeToolchain
+
+[layout]
+cmake_layout
+```
+
+In CMake, consume packages via `find_package(...)` and imported targets:
+
+```cmake
+find_package(GTest REQUIRED)
+target_link_libraries(your_test_target PRIVATE gtest::gtest)
+```
+
 ### CMake Presets
 
 ```json
@@ -1562,18 +1590,26 @@ endif()
 ### Build & Run
 
 ```bash
-# Configure + Build (Debug, Clang)
-cmake --preset debug -S src
+# Install test dependencies with Conan (Debug)
+conan install src/tests -of src/build/debug -s build_type=Debug --build=missing
+
+# Configure + Build (Debug) with Conan toolchain
+cmake --preset debug -S src \
+    -DCMAKE_TOOLCHAIN_FILE=src/build/debug/build/Debug/generators/conan_toolchain.cmake
 cmake --build --preset debug
 
 # Run
-./src/build/debug/app/contur2
+./src/build/debug/build/Debug/app/contur2
 
 # Run tests
 ctest --preset debug
 
-# Configure + Build (Release, Clang)
-cmake --preset release -S src
+# Install test dependencies with Conan (Release)
+conan install src/tests -of src/build/release -s build_type=Release --build=missing
+
+# Configure + Build (Release) with Conan toolchain
+cmake --preset release -S src \
+    -DCMAKE_TOOLCHAIN_FILE=src/build/release/build/Release/generators/conan_toolchain.cmake
 cmake --build --preset release
 
 # Build with GCC for compatibility check
@@ -1741,16 +1777,12 @@ class IScheduler
 - Add bounded-time liveness tests to catch starvation and accidental global lock bottlenecks.
 
 ### Test Framework
-Use **Google Test** (gtest) — widely available, integrates well with CMake's `FetchContent`:
+Use **Google Test** from Conan (`gtest/1.17.0` in `src/tests/conanfile.txt`).
 
 ```cmake
-include(FetchContent)
-FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.15.2
-)
-FetchContent_MakeAvailable(googletest)
+find_package(GTest REQUIRED)
+target_link_libraries(contur2_unit_tests PRIVATE gtest::gtest)
+target_link_libraries(contur2_integration_tests PRIVATE gtest::gtest)
 ```
 
 ---

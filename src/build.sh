@@ -19,8 +19,36 @@ case "${PRESET}" in
         ;;
 esac
 
+if ! command -v conan >/dev/null 2>&1; then
+    echo "[build] ERROR: Conan is required but not found in PATH." >&2
+    exit 1
+fi
+
+case "${PRESET}" in
+    debug|gcc-debug)
+        CONAN_BUILD_TYPE="Debug"
+        ;;
+    release)
+        CONAN_BUILD_TYPE="Release"
+        ;;
+esac
+
+CONAN_OUTPUT_DIR="${SOURCE_DIR}/build/${PRESET}"
+CONAN_GENERATORS_DIR="${CONAN_OUTPUT_DIR}/build/${CONAN_BUILD_TYPE}/generators"
+
+echo "[build] Installing test dependencies with Conan (preset=${PRESET}, build_type=${CONAN_BUILD_TYPE})..."
+conan install "${SOURCE_DIR}/tests" \
+    -of "${CONAN_OUTPUT_DIR}" \
+    -s build_type="${CONAN_BUILD_TYPE}" \
+    --build=missing
+
 echo "[build] Configuring (preset=${PRESET})..."
-cmake --preset "${PRESET}" -S "${SOURCE_DIR}"
+cmake --preset "${PRESET}" \
+    -S "${SOURCE_DIR}" \
+    -UGTest_DIR \
+    -DCMAKE_PREFIX_PATH="${CONAN_GENERATORS_DIR}" \
+    -DCMAKE_MODULE_PATH="${CONAN_GENERATORS_DIR}" \
+    -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON
 
 echo "[build] Building..."
 # Run cmake --build from source dir so it finds CMakePresets.json

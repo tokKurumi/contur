@@ -30,21 +30,29 @@ jobs:
             configure_preset: release
             build_preset: release
             test_preset: release
+            conan_output_dir: release
+            conan_build_type: Release
           - compiler: gcc
             flow: release
             configure_preset: gcc-release
             build_preset: gcc-release
             test_preset: gcc-release
+            conan_output_dir: gcc-release
+            conan_build_type: Release
           - compiler: clang
             flow: tsan-release
             configure_preset: tsan-release
             build_preset: tsan-release
             test_preset: tsan-release
+            conan_output_dir: tsan-release
+            conan_build_type: Release
           - compiler: gcc
             flow: tsan-release
             configure_preset: tsan-gcc-release
             build_preset: tsan-gcc-release
             test_preset: tsan-gcc-release
+            conan_output_dir: tsan-gcc-release
+            conan_build_type: Release
 
     steps:
       - uses: actions/checkout@v6
@@ -52,13 +60,32 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build
+          sudo apt-get install -y ninja-build python3-pip
+          python3 -m pip install --user "conan>=2,<3"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          conan --version
           clang++ --version
           g++ --version
 
+      - name: Prepare Conan profile
+        run: conan profile detect --force
+
+      - name: Install Conan dependencies
+        working-directory: src
+        run: |
+          conan install tests \
+            -of build/${{ matrix.conan_output_dir }} \
+            -s build_type=${{ matrix.conan_build_type }} \
+            --build=missing
+
       - name: Configure
         working-directory: src
-        run: cmake --preset ${{ matrix.configure_preset }}
+        run: |
+          cmake --preset ${{ matrix.configure_preset }} \
+            -UGTest_DIR \
+            -DCMAKE_PREFIX_PATH="$PWD/build/${{ matrix.conan_output_dir }}/build/${{ matrix.conan_build_type }}/generators" \
+            -DCMAKE_MODULE_PATH="$PWD/build/${{ matrix.conan_output_dir }}/build/${{ matrix.conan_build_type }}/generators" \
+            -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON
 
       - name: Build
         working-directory: src

@@ -9,7 +9,8 @@
             "cStandard": "c17",
             "compilerPath": "clang++",
             "includePath": [
-                "${workspaceFolder}/src/include"
+                "${workspaceFolder}/src/include",
+                "${workspaceFolder}/src/build/debug/build/Debug/generators"
             ],
             "defines": [
                 "CONTUR_TRACE_ENABLED"
@@ -23,7 +24,8 @@
             "cStandard": "c17",
             "compilerPath": "clang++",
             "includePath": [
-                "${workspaceFolder}/src/include"
+                "${workspaceFolder}/src/include",
+                "${workspaceFolder}/src/build/debug/build/Debug/generators"
             ],
             "defines": [
                 "CONTUR_TRACE_ENABLED",
