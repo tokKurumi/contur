@@ -1,5 +1,6 @@
 [requires]
 gtest/1.17.0
+ftxui/6.1.9
 
 [generators]
 CMakeDeps

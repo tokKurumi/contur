@@ -53,11 +53,12 @@ endif()
 
 # contur2_tui — TUI layer (separate from kernel)
 #
-# Owns: tui/history_buffer, tui/kernel_read_model, tui/tui_controller and
-#       any future renderer backend (e.g. FTXUI).
-# Depends on: contur2_lib (kernel) via PUBLIC linkage so consumers only need
-#             to link contur2_tui and get the kernel transitively.
+# Owns: tui/history_buffer, tui/kernel_read_model, tui/tui_controller,
+#       tui/ftxui_renderer, tui/ftxui_app.
+# Depends on: contur2_lib (kernel) via PUBLIC linkage, and FTXUI.
 # Rule: contur2_lib must NEVER link or include contur2_tui.
+find_package(ftxui REQUIRED)
+
 file(GLOB_RECURSE CONTUR2_TUI_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/contur/tui/*.cpp
 )
@@ -68,14 +69,14 @@ if(CONTUR2_TUI_SOURCES)
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
     )
-    target_link_libraries(contur2_tui PUBLIC contur2_lib)
+    target_link_libraries(contur2_tui PUBLIC contur2_lib ftxui::ftxui)
 else()
     add_library(contur2_tui INTERFACE)
     target_include_directories(contur2_tui INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
     )
-    target_link_libraries(contur2_tui INTERFACE contur2_lib)
+    target_link_libraries(contur2_tui INTERFACE contur2_lib ftxui::ftxui)
 endif()
 
 # Subdirectories
