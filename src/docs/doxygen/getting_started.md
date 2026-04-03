@@ -20,7 +20,8 @@ The project requires the following tools to build and test locally:
 - `llvm` (includes `clang`) — REQUIRED
 - `cmake` — REQUIRED
 - `ninja` — REQUIRED
-- `git` — REQUIRED (used by CMake to clone/fetch GoogleTest and other externals)
+- `git` — REQUIRED (used to resolve cmake dependencies)
+- `conan` — REQUIRED (used to resolve cmake dependencies)
 - `doxygen` — optional (for generating API documentation)
 - `gcc` — optional (commonly used on Linux/macOS)
 - `Python 3.11` — REQUIRED on **Windows only** (required by LLVM for the build on Windows)
@@ -33,8 +34,9 @@ Linux (Debian / Ubuntu):
 
 ```bash
 sudo apt update
-sudo apt install -y build-essential cmake ninja-build git llvm
+sudo apt install -y build-essential cmake ninja-build git llvm python3-pip pipx
 sudo apt install -y doxygen   # optional
+pipx install conan            # recommended Conan installation method
 ```
 
 Arch / Manjaro:
@@ -43,6 +45,7 @@ Arch / Manjaro:
 sudo pacman -Syu
 sudo pacman -S --needed base-devel cmake ninja git llvm
 sudo pacman -S doxygen        # optional
+yay -S conan-bin              # Conan from AUR
 ```
 
 macOS (Homebrew):
@@ -60,8 +63,15 @@ Windows (winget):
 winget install --id LLVM.LLVM -e
 winget install --id Kitware.CMake -e
 winget install --id Ninja.MSBuild -e
+winget install --id=JFrog.Conan -e
 winget install --id Python.Python.3.11 -e
 winget install --id Doxygen.Doxygen -e   # optional
+```
+
+If Conan has not been used on this machine before, create a default profile once:
+
+```bash
+conan profile detect --force
 ```
 
 ## Build
