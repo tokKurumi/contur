@@ -57,6 +57,23 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-conan-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-conan-
+
+      - name: Cache Conan packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.conan2
+          key: ${{ runner.os }}-conan2-${{ matrix.conan_build_type }}-${{ hashFiles('src/tests/conanfile.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-conan2-${{ matrix.conan_build_type }}-
+            ${{ runner.os }}-conan2-
+
       - name: Install dependencies
         run: |
           sudo apt-get update
