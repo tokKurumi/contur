@@ -168,6 +168,7 @@ TEST_F(FtxuiIntegrationTest, TickAdvancesSimulationTick)
 
 TEST_F(FtxuiIntegrationTest, MultipleTicksAccumulateHistory)
 {
+    spawnProcess("accumulator");
     for (int i = 0; i < 5; ++i)
     {
         ASSERT_TRUE(controller_->dispatch(TuiCommand{TuiCommandKind::Tick, 1, 0}).isOk());
@@ -193,6 +194,7 @@ TEST_F(FtxuiIntegrationTest, SeekBackwardRestoresPastSnapshot)
 
 TEST_F(FtxuiIntegrationTest, SeekForwardAfterBackwardReturnsToLatest)
 {
+    spawnProcess("seeker");
     // Each dispatch creates one history entry; dispatch 3 times → 4 entries total
     ASSERT_TRUE(controller_->dispatch(TuiCommand{TuiCommandKind::Tick, 1, 0}).isOk());
     ASSERT_TRUE(controller_->dispatch(TuiCommand{TuiCommandKind::Tick, 1, 0}).isOk());
@@ -270,6 +272,7 @@ TEST_F(FtxuiIntegrationTest, TickNumberAppearsInRenderedOutput)
 
 TEST_F(FtxuiIntegrationTest, HistoryCursorReflectedInSeek)
 {
+    spawnProcess("cursor-test");
     // Dispatch 3 times to have history to seek back into
     ASSERT_TRUE(controller_->dispatch(TuiCommand{TuiCommandKind::Tick, 1, 0}).isOk());
     ASSERT_TRUE(controller_->dispatch(TuiCommand{TuiCommandKind::Tick, 1, 0}).isOk());

@@ -188,6 +188,20 @@ namespace contur {
             {
                 // Out of physical memory — try page replacement
                 frame = impl_->replacementPolicy->selectVictim(it->second);
+                // Never evict a page that belongs to the process being allocated:
+                // doing so would silently unmap one of its own virtual pages,
+                // causing a SegmentationFault on the very first access.
+                if (frame != INVALID_FRAME)
+                {
+                    auto selfIt = impl_->frameOwners.find(frame);
+                    if (selfIt != impl_->frameOwners.end() && selfIt->second == processId)
+                    {
+                        // Re-enqueue so the policy's internal state stays consistent,
+                        // then treat this as a true out-of-memory situation.
+                        impl_->replacementPolicy->onLoad(frame);
+                        frame = INVALID_FRAME;
+                    }
+                }
                 if (frame == INVALID_FRAME)
                 {
                     // Truly out of memory — rollback what we allocated

@@ -496,7 +496,7 @@ TEST(KernelBuilderTest, SyscallRoundTripWithCallerContext)
     EXPECT_EQ(syscallResult.value(), static_cast<RegisterValue>(pid.value()));
 }
 
-TEST(KernelBuilderTest, RunForTicksStopsGracefullyWhenNoProcesses)
+TEST(KernelBuilderTest, RunForTicksReturnsNotFoundWhenQueueAlwaysEmpty)
 {
     auto fakeDispatcher = std::make_unique<FakeDispatcher>();
     fakeDispatcher->setDispatchResult(Result<void>::error(ErrorCode::NotFound));
@@ -507,7 +507,34 @@ TEST(KernelBuilderTest, RunForTicksStopsGracefullyWhenNoProcesses)
 
     auto result = kernel->runForTicks(20, 3);
 
+    EXPECT_TRUE(result.isError());
+    EXPECT_EQ(result.errorCode(), ErrorCode::NotFound);
+}
+
+TEST(KernelBuilderTest, RunForTicksReturnsOkWhenProcessesFinishMidCycle)
+{
+    auto buildResult = makeStrictBuilder().build();
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
+
+    ASSERT_TRUE(kernel->createProcess(makeConfig("short-lived")).isOk());
+
+    // Request far more ticks than the process needs — should still return ok
+    // because at least one tick dispatched work before the queue went empty.
+    auto result = kernel->runForTicks(100, 1);
     EXPECT_TRUE(result.isOk());
+}
+
+TEST(KernelBuilderTest, RunForTicksOnAlreadyEmptyKernelReturnsNotFound)
+{
+    auto buildResult = makeStrictBuilder().build();
+    ASSERT_TRUE(buildResult.isOk());
+    auto kernel = std::move(buildResult).value();
+
+    // No processes were ever created — queue is empty from the start.
+    auto result = kernel->runForTicks(5, 1);
+    EXPECT_TRUE(result.isError());
+    EXPECT_EQ(result.errorCode(), ErrorCode::NotFound);
 }
 
 TEST(KernelBuilderTest, SyncPrimitiveLifecycle)

@@ -195,3 +195,38 @@ TEST_F(MmuTest, MoveSemantics)
     ASSERT_TRUE(readResult.isOk());
     EXPECT_EQ(readResult.value().operand, 99);
 }
+
+TEST_F(MmuTest, AllocateLargerThanPhysicalMemoryReturnsOutOfMemory)
+{
+    auto mmu = createMmu();
+    auto result = mmu->allocate(1, MEM_SIZE + 1);
+    EXPECT_TRUE(result.isError());
+    EXPECT_EQ(result.errorCode(), ErrorCode::OutOfMemory);
+}
+
+TEST_F(MmuTest, AllocateCausingOnlySelfVictimReturnsOutOfMemory)
+{
+    // pid=2 fills all MEM_SIZE frames.  pid=3 then requests one more page;
+    // the only eviction candidate the FIFO policy can return belongs to pid=2,
+    // so the allocation must succeed by evicting pid=2's frame.
+    auto mmu = createMmu();
+    ASSERT_TRUE(mmu->allocate(1, MEM_SIZE).isOk());
+    ASSERT_TRUE(mmu->deallocate(1).isOk());
+    ASSERT_TRUE(mmu->allocate(2, MEM_SIZE).isOk());
+    auto r = mmu->allocate(3, 1);
+    EXPECT_TRUE(r.isOk());
+}
+
+TEST_F(MmuTest, SelfEvictionIsPreventedWhenProcessExceedsPhysicalMemory)
+{
+    // pid=1 occupies half the frames.  pid=2 requests MEM_SIZE+1 pages:
+    // pages 0..(halfMem-1) come from free frames,
+    // pages halfMem..(MEM_SIZE-1) evict pid=1's frames,
+    // page MEM_SIZE has no victim left except pid=2's own pages — must fail.
+    auto mmu = createMmu();
+    constexpr std::size_t halfMem = MEM_SIZE / 2;
+    ASSERT_TRUE(mmu->allocate(1, halfMem).isOk());
+    auto result = mmu->allocate(2, MEM_SIZE + 1);
+    EXPECT_TRUE(result.isError());
+    EXPECT_EQ(result.errorCode(), ErrorCode::OutOfMemory);
+}

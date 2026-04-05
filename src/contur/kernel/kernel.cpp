@@ -222,6 +222,7 @@ namespace contur {
 
     Result<void> Kernel::runForTicks(std::size_t cycles, std::size_t tickBudget)
     {
+        bool anyWorkDone = false;
         for (std::size_t i = 0; i < cycles; ++i)
         {
             auto tickResult = tick(tickBudget);
@@ -229,10 +230,15 @@ namespace contur {
             {
                 if (tickResult.errorCode() == ErrorCode::NotFound)
                 {
-                    return Result<void>::ok();
+                    // Empty dispatch queue: if we did useful work this call, that
+                    // is a normal "processes finished mid-cycle" situation.  If the
+                    // queue was empty from the very first tick, propagate the error
+                    // so callers (e.g. TUI autoplay) can detect a truly idle kernel.
+                    return anyWorkDone ? Result<void>::ok() : tickResult;
                 }
                 return tickResult;
             }
+            anyWorkDone = true;
         }
         return Result<void>::ok();
     }

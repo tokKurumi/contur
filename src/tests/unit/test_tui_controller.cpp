@@ -223,3 +223,51 @@ TEST(TuiControllerTest, TickPropagatesReadModelError)
     ASSERT_TRUE(result.isError());
     EXPECT_EQ(result.errorCode(), ErrorCode::InvalidState);
 }
+
+TEST(TuiControllerTest, AutoplayPausesWhenKernelReturnsNotFound)
+{
+    // Regression: before the fix, runForTicks swallowed NotFound and returned
+    // ok(), so advanceAutoplay never saw an error and kept looping forever.
+    Tick kernelTick = 0;
+    int tickCalls = 0;
+    FakeKernelReadModel readModel(kernelTick);
+    TuiController controller(readModel, [&](std::size_t) {
+        ++tickCalls;
+        return Result<void>::error(ErrorCode::NotFound);
+    });
+
+    TuiCommand start;
+    start.kind = TuiCommandKind::AutoPlayStart;
+    start.step = 1;
+    start.intervalMs = 100;
+    ASSERT_TRUE(controller.dispatch(start).isOk());
+    EXPECT_EQ(controller.state(), TuiControllerState::Playing);
+
+    (void)controller.advanceAutoplay(250);
+
+    // Controller must have noticed the idle kernel and stopped.
+    EXPECT_EQ(controller.state(), TuiControllerState::Paused);
+    // The tick callback should have been invoked exactly once, not multiple times.
+    EXPECT_EQ(tickCalls, 1);
+}
+
+TEST(TuiControllerTest, AutoplayTickCallCountStopsOnFirstIdleSignal)
+{
+    Tick kernelTick = 0;
+    int tickCalls = 0;
+    FakeKernelReadModel readModel(kernelTick);
+    TuiController controller(readModel, [&](std::size_t) {
+        ++tickCalls;
+        return Result<void>::error(ErrorCode::NotFound);
+    });
+
+    TuiCommand start;
+    start.kind = TuiCommandKind::AutoPlayStart;
+    start.step = 1;
+    start.intervalMs = 100;
+    ASSERT_TRUE(controller.dispatch(start).isOk());
+
+    (void)controller.advanceAutoplay(500);
+
+    EXPECT_EQ(tickCalls, 1) << "Should stop after first NotFound, not loop 5 times";
+}
