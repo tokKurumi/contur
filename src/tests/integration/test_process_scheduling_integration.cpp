@@ -33,9 +33,8 @@ using namespace contur;
 
 namespace {
 
-    Result<std::unique_ptr<IKernel>> buildKernelWithPolicy(
-        std::unique_ptr<ISchedulingPolicy> policy, std::size_t tickBudget = 2
-    )
+    Result<std::unique_ptr<IKernel>>
+    buildKernelWithPolicy(std::unique_ptr<ISchedulingPolicy> policy, std::size_t tickBudget = 2)
     {
         auto clock = std::make_unique<SimulationClock>();
         auto tracer = std::make_unique<NullTracer>(*clock);
@@ -64,16 +63,16 @@ namespace {
             .build();
     }
 
-    ProcessConfig makeNops(
-        const char *name, std::size_t nops, PriorityLevel pri = PriorityLevel::Normal
-    )
+    ProcessConfig makeNops(const char *name, std::size_t nops, PriorityLevel pri = PriorityLevel::Normal)
     {
         ProcessConfig cfg;
         cfg.name = name;
         cfg.priority = Priority{pri, pri, 0};
         cfg.code.reserve(nops + 1);
         for (std::size_t i = 0; i < nops; ++i)
+        {
             cfg.code.push_back({Instruction::Nop, 0, 0, 0});
+        }
         cfg.code.push_back({Instruction::Halt, 0, 0, 0});
         return cfg;
     }
@@ -83,10 +82,14 @@ namespace {
         for (std::size_t i = 0; i < maxTicks; ++i)
         {
             if (kernel.processCount() == 0)
+            {
                 break;
+            }
             auto r = kernel.tick(1);
             if (r.isError() && r.errorCode() == ErrorCode::NotFound)
+            {
                 break;
+            }
         }
     }
 
@@ -263,7 +266,9 @@ TEST(SchedulingIntTest, KernelNowMonotonicallyIncreasesDuringRun)
     for (int i = 0; i < 8; ++i)
     {
         if (kernel->processCount() == 0)
+        {
             break;
+        }
         ASSERT_TRUE(kernel->tick(1).isOk());
         Tick cur = kernel->now();
         EXPECT_GE(cur, prev);

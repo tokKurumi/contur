@@ -18,7 +18,9 @@ namespace {
         std::vector<std::byte> out;
         out.reserve(src.size());
         for (auto v : src)
+        {
             out.push_back(static_cast<std::byte>(v));
+        }
         return out;
     }
 
@@ -27,7 +29,9 @@ namespace {
         std::vector<std::uint8_t> out;
         out.reserve(src.size());
         for (auto b : src)
+        {
             out.push_back(static_cast<std::uint8_t>(b));
+        }
         return out;
     }
 
@@ -241,7 +245,9 @@ TEST_F(FsExtTest, LargeFileSpanningMultipleBlocks)
     const std::size_t dataSize = 200;
     std::vector<std::uint8_t> src(dataSize);
     for (std::size_t i = 0; i < dataSize; ++i)
+    {
         src[i] = static_cast<std::uint8_t>(i % 256);
+    }
     auto payload = asBytes(src);
 
     auto fdW = fs.open("/large.bin", OpenMode::Create | OpenMode::Write);

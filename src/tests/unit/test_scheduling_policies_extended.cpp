@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "contur/core/clock.h"
+
 #include "contur/process/pcb.h"
 #include "contur/process/state.h"
 #include "contur/scheduling/fcfs_policy.h"
@@ -72,7 +73,8 @@ TEST(RoundRobinExtTest, NoPreemptionBeforeTimeSliceExpires)
     RoundRobinPolicy policy(5);
     SchedulingProcessSnapshot running{.pid = 1, .lastStateChange = 0};
     SchedulingProcessSnapshot candidate{.pid = 2};
-    clock.tick(); clock.tick(); // elapsed = 2, slice = 5
+    clock.tick();
+    clock.tick(); // elapsed = 2, slice = 5
     EXPECT_FALSE(policy.shouldPreempt(running, candidate, clock));
 }
 
@@ -82,7 +84,9 @@ TEST(RoundRobinExtTest, PreemptsExactlyAtTimeSliceBoundary)
     RoundRobinPolicy policy(3);
     SchedulingProcessSnapshot running{.pid = 1, .lastStateChange = 0};
     SchedulingProcessSnapshot candidate{.pid = 2};
-    clock.tick(); clock.tick(); clock.tick(); // elapsed = 3 >= slice = 3
+    clock.tick();
+    clock.tick();
+    clock.tick(); // elapsed = 3 >= slice = 3
     EXPECT_TRUE(policy.shouldPreempt(running, candidate, clock));
 }
 
@@ -92,7 +96,10 @@ TEST(RoundRobinExtTest, PreemptsAfterTimeSliceExpires)
     RoundRobinPolicy policy(2);
     SchedulingProcessSnapshot running{.pid = 1, .lastStateChange = 0};
     SchedulingProcessSnapshot candidate{.pid = 2};
-    for (int i = 0; i < 5; ++i) clock.tick(); // elapsed = 5 > slice = 2
+    for (int i = 0; i < 5; ++i)
+    {
+        clock.tick(); // elapsed = 5 > slice = 2
+    }
     EXPECT_TRUE(policy.shouldPreempt(running, candidate, clock));
 }
 
@@ -407,7 +414,9 @@ TEST(MlfqExtTest, ZeroTimeSlicesNormalisedToOne)
 {
     MlfqPolicy policy({0, 0, 0});
     for (std::size_t slice : policy.levelTimeSlices())
+    {
         EXPECT_EQ(slice, 1u);
+    }
 }
 
 TEST(MlfqExtTest, EmptyTimeSliceListDefaultsToOneLevelOne)
@@ -447,12 +456,8 @@ TEST(MlfqExtTest, TimeSliceExpiryPreemptsWithinSameLevel)
     SimulationClock clock;
     // Realtime → level 0, slice = 2
     MlfqPolicy policy({2, 4, 8});
-    SchedulingProcessSnapshot running{
-        .pid = 1, .lastStateChange = 0, .effectivePriority = PriorityLevel::Realtime
-    };
-    SchedulingProcessSnapshot candidate{
-        .pid = 2, .lastStateChange = 0, .effectivePriority = PriorityLevel::Realtime
-    };
+    SchedulingProcessSnapshot running{.pid = 1, .lastStateChange = 0, .effectivePriority = PriorityLevel::Realtime};
+    SchedulingProcessSnapshot candidate{.pid = 2, .lastStateChange = 0, .effectivePriority = PriorityLevel::Realtime};
     clock.tick(); // elapsed = 1 < 2 → no preempt
     EXPECT_FALSE(policy.shouldPreempt(running, candidate, clock));
     clock.tick(); // elapsed = 2 >= 2 → preempt
@@ -465,12 +470,8 @@ TEST(MlfqExtTest, HigherPriorityCandidatePreemptsImmediately)
     MlfqPolicy policy({2, 4, 8});
     // Running is Normal (level >= 3, clamped to 2, slice = 8)
     // Candidate is Realtime (level 0) — preempt immediately regardless of time
-    SchedulingProcessSnapshot running{
-        .pid = 1, .lastStateChange = 0, .effectivePriority = PriorityLevel::Normal
-    };
-    SchedulingProcessSnapshot candidate{
-        .pid = 2, .lastStateChange = 0, .effectivePriority = PriorityLevel::Realtime
-    };
+    SchedulingProcessSnapshot running{.pid = 1, .lastStateChange = 0, .effectivePriority = PriorityLevel::Normal};
+    SchedulingProcessSnapshot candidate{.pid = 2, .lastStateChange = 0, .effectivePriority = PriorityLevel::Realtime};
     clock.tick(); // only 1 tick elapsed — well within any slice
     EXPECT_TRUE(policy.shouldPreempt(running, candidate, clock));
 }

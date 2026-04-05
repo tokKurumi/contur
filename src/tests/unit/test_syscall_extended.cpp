@@ -7,8 +7,9 @@
 
 #include <gtest/gtest.h>
 
-#include "contur/arch/instruction.h"
 #include "contur/core/error.h"
+
+#include "contur/arch/instruction.h"
 #include "contur/process/process_image.h"
 #include "contur/syscall/syscall_ids.h"
 #include "contur/syscall/syscall_table.h"
@@ -32,16 +33,14 @@ TEST(SyscallExtTest, DispatchPropagatesHandlerError)
 {
     SyscallTable table;
     auto caller = makeCaller();
-    ASSERT_TRUE(
-        table
-            .registerHandler(
-                SyscallId::Read,
-                [](std::span<const RegisterValue>, ProcessImage &) {
-                    return Result<RegisterValue>::error(ErrorCode::PermissionDenied);
-                }
-            )
-            .isOk()
-    );
+    ASSERT_TRUE(table
+                    .registerHandler(
+                        SyscallId::Read,
+                        [](std::span<const RegisterValue>, ProcessImage &) {
+                            return Result<RegisterValue>::error(ErrorCode::PermissionDenied);
+                        }
+                    )
+                    .isOk());
 
     auto result = table.dispatch(SyscallId::Read, {}, caller);
     ASSERT_TRUE(result.isError());
@@ -79,16 +78,14 @@ TEST(SyscallExtTest, RegisterMultipleHandlersAllDispatchable)
 
     for (auto [id, retVal] : entries)
     {
-        ASSERT_TRUE(
-            table
-                .registerHandler(
-                    id,
-                    [retVal](std::span<const RegisterValue>, ProcessImage &) {
-                        return Result<RegisterValue>::ok(retVal);
-                    }
-                )
-                .isOk()
-        );
+        ASSERT_TRUE(table
+                        .registerHandler(
+                            id,
+                            [retVal](std::span<const RegisterValue>, ProcessImage &) {
+                                return Result<RegisterValue>::ok(retVal);
+                            }
+                        )
+                        .isOk());
     }
 
     EXPECT_EQ(table.handlerCount(), entries.size());
@@ -105,24 +102,18 @@ TEST(SyscallExtTest, RegisterMultipleHandlersAllDispatchable)
 TEST(SyscallExtTest, HandlerCountDecreasesAfterUnregister)
 {
     SyscallTable table;
-    ASSERT_TRUE(
-        table
-            .registerHandler(
-                SyscallId::Exit, [](std::span<const RegisterValue>, ProcessImage &) {
-                    return Result<RegisterValue>::ok(0);
-                }
-            )
-            .isOk()
-    );
-    ASSERT_TRUE(
-        table
-            .registerHandler(
-                SyscallId::Yield, [](std::span<const RegisterValue>, ProcessImage &) {
-                    return Result<RegisterValue>::ok(0);
-                }
-            )
-            .isOk()
-    );
+    ASSERT_TRUE(table
+                    .registerHandler(
+                        SyscallId::Exit,
+                        [](std::span<const RegisterValue>, ProcessImage &) { return Result<RegisterValue>::ok(0); }
+                    )
+                    .isOk());
+    ASSERT_TRUE(table
+                    .registerHandler(
+                        SyscallId::Yield,
+                        [](std::span<const RegisterValue>, ProcessImage &) { return Result<RegisterValue>::ok(0); }
+                    )
+                    .isOk());
 
     EXPECT_EQ(table.handlerCount(), 2u);
     ASSERT_TRUE(table.unregisterHandler(SyscallId::Exit).isOk());
@@ -150,18 +141,16 @@ TEST(SyscallExtTest, HandlerReceivesAllArgsAndCallerPid)
     std::vector<RegisterValue> capturedArgs;
     ProcessId capturedPid = INVALID_PID;
 
-    ASSERT_TRUE(
-        table
-            .registerHandler(
-                SyscallId::Write,
-                [&capturedArgs, &capturedPid](std::span<const RegisterValue> args, ProcessImage &process) {
-                    capturedArgs = std::vector<RegisterValue>(args.begin(), args.end());
-                    capturedPid = process.id();
-                    return Result<RegisterValue>::ok(static_cast<RegisterValue>(args.size()));
-                }
-            )
-            .isOk()
-    );
+    ASSERT_TRUE(table
+                    .registerHandler(
+                        SyscallId::Write,
+                        [&capturedArgs, &capturedPid](std::span<const RegisterValue> args, ProcessImage &process) {
+                            capturedArgs = std::vector<RegisterValue>(args.begin(), args.end());
+                            capturedPid = process.id();
+                            return Result<RegisterValue>::ok(static_cast<RegisterValue>(args.size()));
+                        }
+                    )
+                    .isOk());
 
     const std::vector<RegisterValue> testArgs = {10, 20, 30, 40};
     auto result = table.dispatch(SyscallId::Write, testArgs, caller);
@@ -178,17 +167,15 @@ TEST(SyscallExtTest, EmptyArgsForwardedCorrectly)
     auto caller = makeCaller();
     std::size_t argCount = 999;
 
-    ASSERT_TRUE(
-        table
-            .registerHandler(
-                SyscallId::Yield,
-                [&argCount](std::span<const RegisterValue> args, ProcessImage &) {
-                    argCount = args.size();
-                    return Result<RegisterValue>::ok(0);
-                }
-            )
-            .isOk()
-    );
+    ASSERT_TRUE(table
+                    .registerHandler(
+                        SyscallId::Yield,
+                        [&argCount](std::span<const RegisterValue> args, ProcessImage &) {
+                            argCount = args.size();
+                            return Result<RegisterValue>::ok(0);
+                        }
+                    )
+                    .isOk());
 
     auto result = table.dispatch(SyscallId::Yield, {}, caller);
     ASSERT_TRUE(result.isOk());
@@ -204,16 +191,14 @@ TEST(SyscallExtTest, GetPidHandlerReturnsCaller)
     SyscallTable table;
     auto caller = makeCaller(42);
 
-    ASSERT_TRUE(
-        table
-            .registerHandler(
-                SyscallId::GetPid,
-                [](std::span<const RegisterValue>, ProcessImage &p) {
-                    return Result<RegisterValue>::ok(static_cast<RegisterValue>(p.id()));
-                }
-            )
-            .isOk()
-    );
+    ASSERT_TRUE(table
+                    .registerHandler(
+                        SyscallId::GetPid,
+                        [](std::span<const RegisterValue>, ProcessImage &p) {
+                            return Result<RegisterValue>::ok(static_cast<RegisterValue>(p.id()));
+                        }
+                    )
+                    .isOk());
 
     auto result = table.dispatch(SyscallId::GetPid, {}, caller);
     ASSERT_TRUE(result.isOk());
@@ -226,16 +211,14 @@ TEST(SyscallExtTest, GetTimeHandlerReturnsSimulatedTime)
     auto caller = makeCaller();
     constexpr RegisterValue simTime = 777;
 
-    ASSERT_TRUE(
-        table
-            .registerHandler(
-                SyscallId::GetTime,
-                [](std::span<const RegisterValue>, ProcessImage &) {
-                    return Result<RegisterValue>::ok(static_cast<RegisterValue>(777));
-                }
-            )
-            .isOk()
-    );
+    ASSERT_TRUE(table
+                    .registerHandler(
+                        SyscallId::GetTime,
+                        [](std::span<const RegisterValue>, ProcessImage &) {
+                            return Result<RegisterValue>::ok(static_cast<RegisterValue>(777));
+                        }
+                    )
+                    .isOk());
 
     auto result = table.dispatch(SyscallId::GetTime, {}, caller);
     ASSERT_TRUE(result.isOk());

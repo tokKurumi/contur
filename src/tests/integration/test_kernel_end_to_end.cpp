@@ -34,18 +34,17 @@
 #include "contur/scheduling/priority_policy.h"
 #include "contur/scheduling/round_robin_policy.h"
 #include "contur/scheduling/scheduler.h"
+#include "contur/sync/mutex.h"
 #include "contur/syscall/syscall_ids.h"
 #include "contur/syscall/syscall_table.h"
-#include "contur/sync/mutex.h"
 #include "contur/tracing/null_tracer.h"
 
 using namespace contur;
 
 namespace {
 
-    Result<std::unique_ptr<IKernel>> buildKernel(
-        std::unique_ptr<ISchedulingPolicy> policy = nullptr, std::size_t tickBudget = 4
-    )
+    Result<std::unique_ptr<IKernel>>
+    buildKernel(std::unique_ptr<ISchedulingPolicy> policy = nullptr, std::size_t tickBudget = 4)
     {
         auto clock = std::make_unique<SimulationClock>();
         auto tracer = std::make_unique<NullTracer>(*clock);
@@ -55,7 +54,9 @@ namespace {
         auto cpu = std::make_unique<Cpu>(*memory);
         auto engine = std::make_unique<InterpreterEngine>(*cpu, *memory);
         if (!policy)
+        {
             policy = std::make_unique<RoundRobinPolicy>(tickBudget);
+        }
         auto scheduler = std::make_unique<Scheduler>(std::move(policy), *tracer);
         auto dispatcher = std::make_unique<Dispatcher>(*scheduler, *engine, *virtualMem, *clock, *tracer);
 
@@ -77,16 +78,16 @@ namespace {
     }
 
     /// @brief Build a process that executes @p nops NOPs then HALTs.
-    ProcessConfig makeNopProcess(
-        const char *name, std::size_t nops = 8, PriorityLevel pri = PriorityLevel::Normal
-    )
+    ProcessConfig makeNopProcess(const char *name, std::size_t nops = 8, PriorityLevel pri = PriorityLevel::Normal)
     {
         ProcessConfig cfg;
         cfg.name = name;
         cfg.priority = Priority{pri, pri, 0};
         cfg.code.reserve(nops + 1);
         for (std::size_t i = 0; i < nops; ++i)
+        {
             cfg.code.push_back({Instruction::Nop, 0, 0, 0});
+        }
         cfg.code.push_back({Instruction::Halt, 0, 0, 0});
         return cfg;
     }
@@ -97,10 +98,14 @@ namespace {
         for (std::size_t i = 0; i < maxTicks; ++i)
         {
             if (kernel.processCount() == 0)
+            {
                 break;
+            }
             auto r = kernel.tick(1);
             if (r.isError() && r.errorCode() == ErrorCode::NotFound)
+            {
                 break;
+            }
         }
     }
 
@@ -294,17 +299,15 @@ TEST(KernelE2ETest, RegisteredSyscallHandlerIsCallable)
     auto kernel = std::move(buildResult).value();
 
     int calls = 0;
-    ASSERT_TRUE(
-        kernel
-            ->registerSyscallHandler(
-                SyscallId::GetTime,
-                [&calls](std::span<const RegisterValue>, ProcessImage &) {
-                    ++calls;
-                    return Result<RegisterValue>::ok(123);
-                }
-            )
-            .isOk()
-    );
+    ASSERT_TRUE(kernel
+                    ->registerSyscallHandler(
+                        SyscallId::GetTime,
+                        [&calls](std::span<const RegisterValue>, ProcessImage &) {
+                            ++calls;
+                            return Result<RegisterValue>::ok(123);
+                        }
+                    )
+                    .isOk());
 
     auto pid = kernel->createProcess(makeNopProcess("sc-test")).value();
     auto result = kernel->syscall(pid, SyscallId::GetTime, {});
@@ -320,16 +323,14 @@ TEST(KernelE2ETest, SyscallFailsForUnknownProcess)
     ASSERT_TRUE(buildResult.isOk());
     auto kernel = std::move(buildResult).value();
 
-    ASSERT_TRUE(
-        kernel
-            ->registerSyscallHandler(
-                SyscallId::GetPid,
-                [](std::span<const RegisterValue>, ProcessImage &p) {
-                    return Result<RegisterValue>::ok(static_cast<RegisterValue>(p.id()));
-                }
-            )
-            .isOk()
-    );
+    ASSERT_TRUE(kernel
+                    ->registerSyscallHandler(
+                        SyscallId::GetPid,
+                        [](std::span<const RegisterValue>, ProcessImage &p) {
+                            return Result<RegisterValue>::ok(static_cast<RegisterValue>(p.id()));
+                        }
+                    )
+                    .isOk());
 
     auto result = kernel->syscall(9999, SyscallId::GetPid, {});
     ASSERT_TRUE(result.isError());
@@ -343,17 +344,15 @@ TEST(KernelE2ETest, SyscallHandlerArgsForwardedCorrectly)
     auto kernel = std::move(buildResult).value();
 
     std::vector<RegisterValue> received;
-    ASSERT_TRUE(
-        kernel
-            ->registerSyscallHandler(
-                SyscallId::Write,
-                [&received](std::span<const RegisterValue> args, ProcessImage &) {
-                    received = std::vector<RegisterValue>(args.begin(), args.end());
-                    return Result<RegisterValue>::ok(static_cast<RegisterValue>(args.size()));
-                }
-            )
-            .isOk()
-    );
+    ASSERT_TRUE(kernel
+                    ->registerSyscallHandler(
+                        SyscallId::Write,
+                        [&received](std::span<const RegisterValue> args, ProcessImage &) {
+                            received = std::vector<RegisterValue>(args.begin(), args.end());
+                            return Result<RegisterValue>::ok(static_cast<RegisterValue>(args.size()));
+                        }
+                    )
+                    .isOk());
 
     auto pid = kernel->createProcess(makeNopProcess("arg-fwd")).value();
     const std::vector<RegisterValue> args = {10, 20, 30};

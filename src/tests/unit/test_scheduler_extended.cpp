@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include "contur/core/clock.h"
+
 #include "contur/process/pcb.h"
 #include "contur/process/state.h"
 #include "contur/scheduling/fcfs_policy.h"
