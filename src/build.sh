@@ -34,18 +34,29 @@ case "${PRESET}" in
 esac
 
 CONAN_OUTPUT_DIR="${SOURCE_DIR}/build/${PRESET}"
-CONAN_GENERATORS_DIR="${CONAN_OUTPUT_DIR}/build/${CONAN_BUILD_TYPE}/generators"
 
 echo "[build] Installing test dependencies with Conan (preset=${PRESET}, build_type=${CONAN_BUILD_TYPE})..."
 conan install "${SOURCE_DIR}/tests" \
     -of "${CONAN_OUTPUT_DIR}" \
     -s build_type="${CONAN_BUILD_TYPE}" \
+    -s compiler.cppstd=20 \
     --build=missing
+
+# Conan's cmake_layout can place generators in different subpaths depending on settings.
+if [[ -d "${CONAN_OUTPUT_DIR}/build/generators" ]]; then
+    CONAN_GENERATORS_DIR="${CONAN_OUTPUT_DIR}/build/generators"
+elif [[ -d "${CONAN_OUTPUT_DIR}/build/${CONAN_BUILD_TYPE}/generators" ]]; then
+    CONAN_GENERATORS_DIR="${CONAN_OUTPUT_DIR}/build/${CONAN_BUILD_TYPE}/generators"
+else
+    echo "[build] ERROR: Conan generators directory not found under ${CONAN_OUTPUT_DIR}" >&2
+    exit 1
+fi
 
 echo "[build] Configuring (preset=${PRESET})..."
 cmake --preset "${PRESET}" \
     -S "${SOURCE_DIR}" \
     -UGTest_DIR \
+    -Uftxui_DIR \
     -DCMAKE_PREFIX_PATH="${CONAN_GENERATORS_DIR}" \
     -DCMAKE_MODULE_PATH="${CONAN_GENERATORS_DIR}" \
     -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON

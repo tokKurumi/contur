@@ -30,14 +30,26 @@ if (-not (Get-Command conan -ErrorAction SilentlyContinue)) {
 
 $ConanBuildType = if ($Preset -eq "release") { "Release" } else { "Debug" }
 $ConanOutputDir = Join-Path $SourceDir "build/$Preset"
-$ConanGeneratorsDir = Join-Path $ConanOutputDir "build/$ConanBuildType/generators"
+$CMakeSourceDir = $SourceDir -replace "\\", "/"
 
 Write-Host "[build] Installing test dependencies with Conan (preset=$ActualPreset, build_type=$ConanBuildType)..."
-conan install "$SourceDir/tests" -of "$ConanOutputDir" -s "build_type=$ConanBuildType" --build=missing
+conan install "$SourceDir/tests" -of "$ConanOutputDir" -s "build_type=$ConanBuildType" -s "compiler.cppstd=20" --build=missing
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+# Conan's cmake_layout can place generators in different subpaths depending on settings.
+$ConanGeneratorsDirCandidates = @(
+    (Join-Path $ConanOutputDir "build/generators"),
+    (Join-Path $ConanOutputDir "build/$ConanBuildType/generators")
+)
+$ConanGeneratorsDir = $ConanGeneratorsDirCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $ConanGeneratorsDir) {
+    Write-Error "[build] ERROR: Conan generators directory not found under $ConanOutputDir"
+    exit 1
+}
+$CMakeConanGeneratorsDir = $ConanGeneratorsDir -replace "\\", "/"
+
 Write-Host "[build] Configuring (preset=$ActualPreset)..."
-cmake --preset $ActualPreset -S $SourceDir -UGTest_DIR -DCMAKE_PREFIX_PATH="$ConanGeneratorsDir" -DCMAKE_MODULE_PATH="$ConanGeneratorsDir" -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON
+cmake --preset $ActualPreset -S $CMakeSourceDir -UGTest_DIR -Uftxui_DIR -DCMAKE_PREFIX_PATH="$CMakeConanGeneratorsDir" -DCMAKE_MODULE_PATH="$CMakeConanGeneratorsDir" -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "[build] Building..."
