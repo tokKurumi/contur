@@ -366,19 +366,13 @@ namespace contur {
             return hbox({
                        headerBlock("[Space] Play/Pause") | bold | color(Color::Green),
                        separator(),
-                       headerBlock("[←][→] Seek 1") | color(Color::Cyan),
-                       separator(),
-                       headerBlock("[H][L] Seek 10") | color(Color::Cyan),
+                       headerBlock("[h][l] Seek") | color(Color::Cyan),
                        separator(),
                        headerBlock("[t] Tick") | color(Color::White),
                        separator(),
+                       headerBlock("[j][k] Logs") | color(Color::GrayLight),
+                       separator(),
                        headerBlock("[+][-] Speed") | color(Color::Yellow),
-                       separator(),
-                       headerBlock("[Up][Down] Logs") | color(Color::GrayLight),
-                       separator(),
-                       headerBlock("[r] Resume") | color(Color::Magenta),
-                       separator(),
-                       headerBlock("[s] Stop") | color(Color::Red),
                        separator(),
                        headerBlock("[q] Quit") | bold | color(Color::Red),
                    }) |
@@ -535,12 +529,12 @@ namespace contur {
                 (void)imp.controller.dispatch(TuiCommand{TuiCommandKind::Tick, 1, 0});
                 return true;
             }
-            if (e == Event::ArrowLeft || e == Event::Character('h'))
+            if (e == Event::Character('h'))
             {
                 (void)imp.controller.dispatch(TuiCommand{TuiCommandKind::SeekBackward, 1, 0});
                 return true;
             }
-            if (e == Event::ArrowRight || e == Event::Character('l'))
+            if (e == Event::Character('l'))
             {
                 (void)imp.controller.dispatch(TuiCommand{TuiCommandKind::SeekForward, 1, 0});
                 return true;
@@ -565,26 +559,14 @@ namespace contur {
                 imp.speedDown();
                 return true;
             }
-            if (e == Event::ArrowUp || e == Event::Character('k'))
+            if (e == Event::Character('k'))
             {
                 imp.scrollKernelLogsUp();
                 return true;
             }
-            if (e == Event::ArrowDown || e == Event::Character('j'))
+            if (e == Event::Character('j'))
             {
                 imp.scrollKernelLogsDown();
-                return true;
-            }
-            if (e == Event::Character('r'))
-            {
-                (void)imp.controller.dispatch(
-                    TuiCommand{TuiCommandKind::AutoPlayStart, imp.cfg.defaultStep, imp.currentIntervalMs}
-                );
-                return true;
-            }
-            if (e == Event::Character('s'))
-            {
-                (void)imp.controller.dispatch(TuiCommand{TuiCommandKind::AutoPlayStop, 1, 0});
                 return true;
             }
             return false;
